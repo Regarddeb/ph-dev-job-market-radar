@@ -50,7 +50,7 @@ Neon project: `job-radar` (`rough-pine-12150056`) in `aws-ap-southeast-1` (Singa
 ## 3. Stack
 
 - **Scraper** (`scraper/`, Python 3.12, managed by uv): httpx (one shared client: User-Agent, rate limit, retries with backoff on 429/5xx, honours Retry-After), BeautifulSoup + lxml, feedparser, pydantic, rapidfuzz, psycopg 3, pytest, ruff.
-- **Dashboard** (`dashboard/`, TypeScript, pnpm): Next.js 16 App Router (Cache Components), Prisma 7 ORM + Migrate with `@prisma/adapter-neon`, Tailwind 4 + shadcn/ui, Recharts, Vitest, ESLint, Prettier. Auth.js only if "Matches for me" stays private (decision pending).
+- **Dashboard** (`dashboard/`, TypeScript, pnpm): Next.js 16 App Router (Cache Components), Prisma 7 ORM + Migrate with `@prisma/adapter-neon`, Tailwind 4 + shadcn/ui, Recharts, Vitest, ESLint, Prettier. No auth: the whole dashboard is public (decided 2026-11-02).
 - **Infra:** GitHub Actions, Vercel Hobby (root directory `dashboard/`), Neon Postgres.
 
 ## 4. Schema
@@ -133,7 +133,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 | Overview | `/` | Stat cards (active postings, new this week, % with salary, % remote and PH-eligible); job type and work setup donuts |
 | Skills | `/skills` | Top skills this month vs last (bar, % change); weekly trend line for selected skills |
 | Salaries | `/salaries` | Median and range per skill, always with sample size (n) |
-| Matches for me | `/matches` | Postings matching a saved skill set, part-time/freelance and PH-eligible, newest first |
+| Matches for me | `/matches` | Public page. Postings matching the owner's skill set, part-time/freelance and PH-eligible, newest first. The skill set is a committed config file (`dashboard/config/my-skills.ts`), not stored in the DB, so the dashboard stays read-only |
 | Ops | `/ops` | `crawl_runs` status/errors per source; last successful run per source (flag > 48 h); DB size (warn > 800 MB) |
 
 - Every posting row shows a "via <Source>" link to `source_url`.
