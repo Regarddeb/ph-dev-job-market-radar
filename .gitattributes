@@ -1,0 +1,8 @@
+# Normalize text to LF in the repo and working tree (CI runs on Linux).
+* text=auto eol=lf
+
+# Fixtures are raw HTTP responses and must stay byte-for-byte identical.
+scraper/tests/fixtures/** -text
+
+*.ico binary
+*.png binary

@@ -1,0 +1,15 @@
+// Prisma owns the database schema for the whole project (dashboard + Python scraper).
+// Rules:
+//   - Every model/field maps to snake_case via @@map / @map, so Python sees plain SQL names.
+//   - Change the schema here, then `pnpm prisma migrate dev --name <change>`.
+//   - Never edit a committed migration in prisma/migrations/; add a new one.
+// Models are added in build step 2 (see docs/SPEC.md).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

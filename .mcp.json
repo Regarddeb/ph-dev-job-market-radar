@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@bytebase/dbhub@1.5.0", "--transport", "stdio", "--config", "${CLAUDE_PROJECT_DIR:-.}/.claude/dbhub.toml"],
+      "env": {
+        "JOBRADAR_READONLY_DATABASE_URL": "${JOBRADAR_READONLY_DATABASE_URL}"
+      }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.84"]
+    }
+  }
+}

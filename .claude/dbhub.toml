@@ -1,0 +1,14 @@
+# DBHub config for the `postgres` MCP server (.mcp.json).
+# Connects with the READ-ONLY Neon role, and DBHub itself also refuses writes.
+# The DSN is read from the environment (set JOBRADAR_READONLY_DATABASE_URL before starting Claude Code).
+
+[[sources]]
+id = "jobradar"
+description = "Job Radar Neon Postgres (read-only role)"
+dsn = "${JOBRADAR_READONLY_DATABASE_URL}"
+
+[[tools]]
+name = "execute_sql"
+source = "jobradar"
+readonly = true
+max_rows = 500

@@ -1,0 +1,5 @@
+# Lint hook scripts with the same rules as the scraper.
+extend = "../../scraper/pyproject.toml"
+
+[lint.isort]
+known-first-party = ["_common"]
