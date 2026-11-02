@@ -43,7 +43,9 @@ Allowed sources ──fetch──> GitHub Actions daily workflow (Python)
 | `jobradar_rw` | pooled | scraper, aggregate, retention (GitHub Actions) | `DATABASE_URL` |
 | `jobradar_ro` | pooled | dashboard (Vercel `DATABASE_URL`), `postgres` MCP | `JOBRADAR_READONLY_DATABASE_URL` locally |
 
-`jobradar_rw` gets SELECT, INSERT, UPDATE and DELETE on tables plus USAGE on sequences, with no DDL. `jobradar_ro` gets SELECT only. Default privileges are set so future tables inherit both grants.
+`jobradar_rw` gets SELECT, INSERT, UPDATE and DELETE on tables plus USAGE on sequences, with no DDL. `jobradar_ro` gets SELECT only, with `default_transaction_read_only = on`. Default privileges are set so future tables inherit both grants. Both roles are created with SQL by `scripts/setup_db_roles.py`, not through the Neon API, so they are not members of `neon_superuser`.
+
+Neon project: `job-radar` (`rough-pine-12150056`) in `aws-ap-southeast-1` (Singapore), database `neondb`. Deploy the dashboard to Vercel region `sin1` to match.
 
 ## 3. Stack
 

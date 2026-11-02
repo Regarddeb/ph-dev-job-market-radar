@@ -31,3 +31,4 @@ dashboard/lib/generated/
 Thumbs.db
 .idea/
 .vscode/
+.neon

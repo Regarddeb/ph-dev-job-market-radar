@@ -35,6 +35,8 @@ Full design: @docs/SPEC.md · Source registry: @docs/SOURCES.md
   - `DATABASE_URL`: read-write, pooled; used by the scraper.
   - `MIGRATE_DATABASE_URL`: owner, direct; used by Prisma Migrate.
   - `JOBRADAR_READONLY_DATABASE_URL`: read-only; used by the local dashboard and the `postgres` MCP server. It must be exported in the shell that launches Claude Code.
+- Neon: org `Humphrey` (`org-empty-pond-46580301`), project `job-radar` (`rough-pine-12150056`), region `aws-ap-southeast-1`, database `neondb`, branch `main`. `neon.ts` and the root `package.json` are Neon config only. `.neon` is the local link file (gitignored).
+- Roles: the owner `neondb_owner` (migrations only), `jobradar_rw` (no DDL) and `jobradar_ro` (SELECT only, read-only transactions). `scripts/setup_db_roles.py` creates them or rotates their passwords and rewrites `.env`. Re-run it after any `neon env pull`, because that overwrites `DATABASE_URL` with the owner role.
 - GitHub secrets: `DATABASE_URL`, `MIGRATE_DATABASE_URL`, `SCRAPER_USER_AGENT`, `REVALIDATE_SECRET`, `DASHBOARD_URL`.
 - Vercel env: `DATABASE_URL` (the read-only role) and `REVALIDATE_SECRET`.
 
