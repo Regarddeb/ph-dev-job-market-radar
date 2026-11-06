@@ -20,9 +20,7 @@ The single source of truth for which job sites the scraper may touch. `/add-sour
 
 ## Unclear: don't implement until resolved
 
-| Source | Kind | Access | Why unclear | Status | Terms checked | Terms URL |
-| --- | --- | --- | --- | --- | --- | --- |
-| Remotive | api | `https://remotive.com/api/remote-jobs?category=software-dev` | Conflicting signals. **API page** invites public use: "max. 4 times a day", "excessive requests (more than 2x per minute) will be blocked", "link back to the URL found on Remotive AND mention Remotive as a source", "do not submit Remotive jobs to third Party websites", jobs delayed 24 h. **robots.txt** (`User-agent: *`): `Disallow: /api/*`, `Disallow: /*category=`. **Terms of Use** (updated March 2026, §8): "You agree not to … Scrape, crawl, or use automated means to access the Site or extract data without our written permission." **Next step:** ask Remotive for written permission. If they grant it, store the reply in `docs/permissions/remotive.md` and move it back to Allowed. | Unclear | 2026-11-06 | `https://remotive.com/terms-of-use`, `https://remotive.com/remote-jobs/api` |
+_None._
 
 ## Candidates (vet with `source-researcher` before use)
 
@@ -42,5 +40,6 @@ The single source of truth for which job sites the scraper may touch. `/add-sour
 | Indeed | Terms prohibit scraping |
 | Upwork | Terms prohibit scraping |
 | OnlineJobs.ph | No API; employer data is behind a login |
+| Remotive | Excluded by the project owner on 2026-11-06. Its Terms of Use (§8, March 2026) forbid automated access "without our written permission", and robots.txt has `Disallow: /api/*`, even though its API page invites public use. Not worth the ambiguity: Remote OK and HN cover the need. |
 
-A PreToolUse hook blocks shell commands that reference these domains, and `.claude/settings.json` denies WebFetch to them.
+A PreToolUse hook blocks shell commands that reference these domains (Remotive included), and `.claude/settings.json` denies WebFetch to them.

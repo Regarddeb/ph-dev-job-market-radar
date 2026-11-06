@@ -30,7 +30,8 @@
       "WebFetch(domain:upwork.com)",
       "WebFetch(domain:www.upwork.com)",
       "WebFetch(domain:onlinejobs.ph)",
-      "WebFetch(domain:www.onlinejobs.ph)"
+      "WebFetch(domain:www.onlinejobs.ph)",
+      "WebFetch(domain:remotive.com)"
     ]
   },
   "enabledMcpjsonServers": ["postgres", "playwright"],

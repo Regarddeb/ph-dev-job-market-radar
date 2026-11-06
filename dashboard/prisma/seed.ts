@@ -28,19 +28,8 @@ type SourceSeed = {
   termsUrl: string | null;
 };
 
-// Sources from docs/SOURCES.md. Slugs are Python module names. Remotive is "Unclear"
-// (2026-11-06: robots.txt + Terms of Use conflict with its API page) and stays inactive.
+// Sources marked Allowed in docs/SOURCES.md. Slugs are Python module names.
 const SOURCES: SourceSeed[] = [
-  {
-    slug: "remotive",
-    name: "Remotive",
-    baseUrl: "https://remotive.com",
-    kind: SourceKind.api,
-    attributionText: "via Remotive",
-    crawlIntervalMinutes: 1440,
-    isActive: false,
-    termsUrl: null,
-  },
   {
     slug: "remoteok",
     name: "Remote OK",
@@ -90,11 +79,30 @@ function loadSkills(): SkillSeed[] {
   return data.skills;
 }
 
+// Sources moved to Forbidden in docs/SOURCES.md. Their rows are deleted only if nothing was
+// ever crawled for them (deleting a crawled source would cascade to its data).
+const RETIRED_SOURCES = ["remotive"]; // excluded 2026-11-06
+
 async function seedSources(prisma: PrismaClient): Promise<void> {
   for (const { slug, ...fields } of SOURCES) {
     await prisma.source.upsert({ where: { slug }, create: { slug, ...fields }, update: fields });
   }
   console.log(`sources: ${SOURCES.length} upserted`);
+
+  for (const slug of RETIRED_SOURCES) {
+    const row = await prisma.source.findUnique({
+      where: { slug },
+      select: { id: true, _count: { select: { crawlRuns: true, rawPostings: true } } },
+    });
+    if (!row) continue;
+    if (row._count.crawlRuns > 0 || row._count.rawPostings > 0) {
+      await prisma.source.update({ where: { slug }, data: { isActive: false } });
+      console.warn(`sources: ${slug} is retired but has data; deactivated, not deleted`);
+    } else {
+      await prisma.source.delete({ where: { slug } });
+      console.log(`sources: retired ${slug} removed`);
+    }
+  }
 }
 
 async function seedSkills(prisma: PrismaClient): Promise<void> {

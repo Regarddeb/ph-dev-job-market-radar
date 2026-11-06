@@ -79,7 +79,7 @@ daily_skill_stats(date, skill_id, active_postings, new_postings, median_salary_p
 ```
 
 **Additions in the implemented schema** (marked `(+)` in `schema.prisma`):
-- `sources.slug` (unique): the `--source <slug>` key and the Python module name (`remotive`, `remoteok`, `weworkremotely`, `hn_hiring`).
+- `sources.slug` (unique): the `--source <slug>` key and the Python module name (`remoteok`, `weworkremotely`, `hn_hiring`).
 - `postings.external_id` + `UNIQUE(source_id, external_id)`: the posting upsert key.
 - `skill_aliases.requirements_only`: the alias only matches inside an extracted requirements section.
 - Enums are Postgres enum types: `source_kind`, `crawl_status`, `seniority`, `job_type`, `work_setup`, `skill_category`.
@@ -159,7 +159,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 
 1. Repo skeleton, Claude Code setup and docs. ✅
 2. Neon roles; `schema.prisma`; first migration (`prisma migrate dev`); seed sources and ~50 skills with aliases. ✅
-3. `scraper/http.py`, then Remote OK end to end via `/add-source` ✅. Remote OK replaced Remotive: on 2026-11-06 Remotive was marked Unclear because its robots.txt and Terms of Use conflict with its API page (see SOURCES.md). Remotive comes back only with written permission.
+3. `scraper/http.py`, then Remote OK end to end via `/add-source` ✅. Remote OK replaced Remotive, which was excluded on 2026-11-06 because its robots.txt and Terms of Use conflict with its API page (see SOURCES.md, Forbidden).
 4. A bare postings table page, so real data is visible.
 5. Salary, classification and skill-tagging rules, each with fixture tests.
 6. Dedupe (Remote OK moved to step 3).

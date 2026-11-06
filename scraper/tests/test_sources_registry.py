@@ -54,4 +54,4 @@ def test_adapter_is_allowed_in_sources_md(slug: str) -> None:
 
 def test_unknown_source_rejected() -> None:
     with pytest.raises(KeyError):
-        get_adapter("remotive")  # Unclear as of 2026-11-06
+        get_adapter("remotive")  # excluded 2026-11-06 (Forbidden)

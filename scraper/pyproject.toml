@@ -22,7 +22,7 @@ dev = [
 
 [tool.uv]
 # Not an installable package: run modules from the repo root, e.g.
-#   uv run --project scraper python -m scraper.pipeline --source remotive --dry-run
+#   uv run --project scraper python -m scraper.pipeline --source remoteok --dry-run
 package = false
 
 [tool.pytest.ini_options]

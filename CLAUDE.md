@@ -6,7 +6,7 @@ Full design: @docs/SPEC.md · Source registry: @docs/SOURCES.md
 
 ## Hard rules
 - **No LLM/AI API calls** anywhere in `scraper/` or `dashboard/`. Extraction uses only regex, keyword dictionaries and rapidfuzz.
-- **Only sources marked Allowed in docs/SOURCES.md.** Never JobStreet, JobsDB/SEEK, LinkedIn, Indeed, Upwork or OnlineJobs.ph. No logins, anti-bot bypassing or IP/proxy rotation.
+- **Only sources marked Allowed in docs/SOURCES.md.** Never JobStreet, JobsDB/SEEK, LinkedIn, Indeed, Upwork, OnlineJobs.ph or Remotive. No logins, anti-bot bypassing or IP/proxy rotation.
 - Respect each source's terms: rate limits, an identifying User-Agent (`SCRAPER_USER_AGENT`), attribution. Every posting keeps `source_url`, and the UI shows "via <Source>".
 - **Prisma owns the schema.** Python never runs DDL. Never edit a committed migration; add a new one. Use snake_case DB names via `@map` / `@@map`.
 - **Raw first:** store responses in `raw_postings` before parsing.
@@ -82,4 +82,4 @@ uv run --no-project python .claude/hooks/test_hooks.py
 - **Remote OK's data has mojibake and HTML entities in the source itself**, and its feed mixes non-dev jobs. `clean_text` / `html_to_text` and `is_relevant` handle both. Salary values below USD 10k aren't treated as annual (no period is guessed).
 
 ## Status
-Steps 1–3 are done. **Remote OK is live end to end**: 73 dev postings in Neon, and the daily `scrape.yml` is in place. **Remotive is "Unclear"** (robots.txt + Terms of Use vs its API page) and waits for written permission. Next is step 4: a bare postings table page on the dashboard. See SPEC §10.
+Steps 1–3 are done. **Remote OK is live end to end**: 73 dev postings in Neon, and the daily `scrape.yml` is in place. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). Next is step 4: a bare postings table page on the dashboard. See SPEC §10.

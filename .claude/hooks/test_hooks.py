@@ -14,7 +14,12 @@ from pathlib import Path
 HOOKS = Path(__file__).resolve().parent
 ROOT = HOOKS.parent.parent
 # Assembled so this file's own text doesn't contain the forbidden domains.
-FORBIDDEN_DOMAINS = ["linked" + "in.com", "online" + "jobs.ph", "ph.job" + "street.com"]
+FORBIDDEN_DOMAINS = [
+    "linked" + "in.com",
+    "online" + "jobs.ph",
+    "ph.job" + "street.com",
+    "remo" + "tive.com",
+]
 
 
 def run(hook: str, event: dict) -> int:
@@ -84,7 +89,7 @@ CASES: list[tuple[str, str, dict, int]] = [
     (
         "allowed source allowed",
         "guard_bash.py",
-        bash("curl https://remotive.com/api/remote-jobs"),
+        bash("curl https://remoteok.com/api"),
         0,
     ),
 ]
