@@ -22,11 +22,13 @@ Then:
     and drops DATABASE_URL_UNPOOLED (its value moves to MIGRATE_DATABASE_URL).
 
 Re-running rotates both passwords: update GitHub/Vercel secrets afterwards.
+`--grants-only` re-applies grants to the existing roles without touching passwords or .env.
 Note: `neon env pull` overwrites DATABASE_URL with the owner role; re-run this script after it.
 """
 
 from __future__ import annotations
 
+import argparse
 import re
 import secrets
 import sys
@@ -87,6 +89,14 @@ def is_pooled(url: str) -> bool:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--grants-only",
+        action="store_true",
+        help="re-apply grants to existing roles; keep passwords and .env as they are",
+    )
+    grants_only: bool = parser.parse_args().grants_only
+
     if not ENV_PATH.exists():
         print(
             "No .env at repo root. Run `neon init` or `neon env pull` first.",
@@ -117,6 +127,17 @@ def main() -> int:
 
     with psycopg.connect(owner_direct, autocommit=True) as conn:
         for role, pw in passwords.items():
+            if grants_only:
+                exists = conn.execute(
+                    "SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)
+                ).fetchone()
+                if not exists:
+                    print(
+                        f"role {role} missing; run without --grants-only",
+                        file=sys.stderr,
+                    )
+                    return 1
+                continue
             exists = conn.execute(
                 "SELECT 1 FROM pg_roles WHERE rolname = %s", (role,)
             ).fetchone()
@@ -154,7 +175,20 @@ def main() -> int:
         }
         for stmt in stmts:
             conn.execute(sql.SQL(stmt).format(**names))
+        # Migration history belongs to the owner: the app role may read it, never write it.
+        if conn.execute("SELECT to_regclass('public._prisma_migrations')").fetchone()[
+            0
+        ]:
+            conn.execute(
+                sql.SQL(
+                    "REVOKE INSERT, UPDATE, DELETE ON _prisma_migrations FROM {}"
+                ).format(ident(RW))
+            )
         print("grants and default privileges applied")
+
+    if grants_only:
+        print("--grants-only: passwords and .env unchanged")
+        return 0
 
     # Verify each role can log in through the pooler, and that ro can't write.
     rw_url = with_credentials(pooled_base, RW, passwords[RW])

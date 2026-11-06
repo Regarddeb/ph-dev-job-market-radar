@@ -1,9 +1,9 @@
 // Prisma owns the database schema for the whole project (dashboard + Python scraper).
 // Rules:
 //   - Every model/field maps to snake_case via @@map / @map, so Python sees plain SQL names.
-//   - Change the schema here, then `pnpm prisma migrate dev --name <change>`.
+//   - Change the schema here, then `pnpm db:migrate --name <change>`.
 //   - Never edit a committed migration in prisma/migrations/; add a new one.
-// Models are added in build step 2 (see docs/SPEC.md).
+// See docs/SPEC.md §4. Additions beyond the spec's column list are marked "(+)".
 
 generator client {
   provider = "prisma-client"
@@ -12,4 +12,259 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- enums
+
+enum SourceKind {
+  api
+  rss
+  html
+
+  @@map("source_kind")
+}
+
+enum CrawlStatus {
+  running
+  ok
+  failed
+
+  @@map("crawl_status")
+}
+
+enum Seniority {
+  intern
+  junior
+  mid
+  senior
+  lead
+  unspecified
+
+  @@map("seniority")
+}
+
+enum JobType {
+  full_time
+  part_time
+  contract
+  freelance
+  unspecified
+
+  @@map("job_type")
+}
+
+enum WorkSetup {
+  remote
+  hybrid
+  onsite
+  unspecified
+
+  @@map("work_setup")
+}
+
+enum SkillCategory {
+  language
+  framework
+  database
+  tool
+  cloud
+
+  @@map("skill_category")
+}
+
+// ---------------------------------------------------------------- crawling
+
+model Source {
+  id                   Int        @id @default(autoincrement())
+  /// (+) Stable key used by `python -m scraper.pipeline --source <slug>`.
+  slug                 String     @unique
+  name                 String
+  baseUrl              String     @map("base_url")
+  kind                 SourceKind
+  isActive             Boolean    @default(false) @map("is_active")
+  crawlIntervalMinutes Int        @default(1440) @map("crawl_interval_minutes")
+  lastCrawledAt        DateTime?  @map("last_crawled_at") @db.Timestamptz(6)
+  attributionText      String     @map("attribution_text")
+  termsUrl             String?    @map("terms_url")
+
+  crawlRuns   CrawlRun[]
+  rawPostings RawPosting[]
+  postings    Posting[]
+
+  @@map("sources")
+}
+
+model CrawlRun {
+  id            Int         @id @default(autoincrement())
+  sourceId      Int         @map("source_id")
+  startedAt     DateTime    @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt    DateTime?   @map("finished_at") @db.Timestamptz(6)
+  status        CrawlStatus @default(running)
+  pagesFetched  Int         @default(0) @map("pages_fetched")
+  postingsFound Int         @default(0) @map("postings_found")
+  postingsNew   Int         @default(0) @map("postings_new")
+  errorMessage  String?     @map("error_message")
+
+  source      Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  rawPostings RawPosting[]
+
+  @@index([sourceId, startedAt(sort: Desc)])
+  @@index([startedAt])
+  @@map("crawl_runs")
+}
+
+/// Every fetched item, stored before parsing. Payload is deleted after 90 days (retention.py).
+model RawPosting {
+  id          Int       @id @default(autoincrement())
+  sourceId    Int       @map("source_id")
+  /// Nullable: crawl_runs are trimmed after 1 year.
+  crawlRunId  Int?      @map("crawl_run_id")
+  externalId  String    @map("external_id")
+  url         String
+  payload     String
+  /// sha256 hex of payload; unchanged hash => skip re-parse.
+  contentHash String    @map("content_hash") @db.Char(64)
+  fetchedAt   DateTime  @default(now()) @map("fetched_at") @db.Timestamptz(6)
+  parsedAt    DateTime? @map("parsed_at") @db.Timestamptz(6)
+  parseError  String?   @map("parse_error")
+
+  source   Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  crawlRun CrawlRun? @relation(fields: [crawlRunId], references: [id], onDelete: SetNull)
+  postings Posting[]
+
+  @@unique([sourceId, externalId])
+  @@index([fetchedAt])
+  @@index([parsedAt])
+  @@map("raw_postings")
+}
+
+// ---------------------------------------------------------------- postings
+
+model Company {
+  id             Int    @id @default(autoincrement())
+  name           String
+  normalizedName String @unique @map("normalized_name")
+
+  postings Posting[]
+
+  @@map("companies")
+}
+
+model Posting {
+  id                  Int       @id @default(autoincrement())
+  /// Nullable: raw_postings are deleted after 90 days.
+  rawPostingId        Int?      @map("raw_posting_id")
+  sourceId            Int       @map("source_id")
+  /// (+) Same id as raw_postings.external_id; upsert key with source_id.
+  externalId          String    @map("external_id")
+  companyId           Int?      @map("company_id")
+  title               String
+  titleNormalized     String    @map("title_normalized")
+  seniority           Seniority @default(unspecified)
+  jobType             JobType   @default(unspecified) @map("job_type")
+  workSetup           WorkSetup @default(unspecified) @map("work_setup")
+  /// NULL = unknown. Never guessed.
+  phEligible          Boolean?  @map("ph_eligible")
+  locationText        String?   @map("location_text")
+  salaryRaw           String?   @map("salary_raw")
+  /// ISO 4217, e.g. PHP, USD.
+  salaryCurrency      String?   @map("salary_currency") @db.Char(3)
+  /// hour | day | month | year, as stated in the posting.
+  salaryPeriod        String?   @map("salary_period")
+  salaryMinPhpMonthly Int?      @map("salary_min_php_monthly")
+  salaryMaxPhpMonthly Int?      @map("salary_max_php_monthly")
+  /// Set to NULL after 90 days (retention.py).
+  description         String?
+  sourceUrl           String    @map("source_url")
+  postedAt            DateTime? @map("posted_at") @db.Timestamptz(6)
+  firstSeenAt         DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz(6)
+  lastSeenAt          DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  isActive            Boolean   @default(true) @map("is_active")
+  /// sha1 hex of company.normalized_name + title_normalized + work_setup.
+  fingerprint         String?   @db.Char(40)
+  /// Set on duplicates; dashboard queries filter canonical_posting_id IS NULL.
+  canonicalPostingId  Int?      @map("canonical_posting_id")
+
+  rawPosting       RawPosting?    @relation(fields: [rawPostingId], references: [id], onDelete: SetNull)
+  source           Source         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  company          Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  canonicalPosting Posting?       @relation("PostingDuplicates", fields: [canonicalPostingId], references: [id], onDelete: SetNull)
+  duplicates       Posting[]      @relation("PostingDuplicates")
+  skills           PostingSkill[]
+
+  @@unique([sourceId, externalId])
+  @@index([firstSeenAt])
+  @@index([lastSeenAt])
+  @@index([isActive, canonicalPostingId])
+  @@index([companyId, firstSeenAt])
+  @@index([fingerprint, firstSeenAt])
+  @@index([canonicalPostingId])
+  @@index([rawPostingId])
+  @@map("postings")
+}
+
+// ---------------------------------------------------------------- skills
+
+model Skill {
+  id       Int           @id @default(autoincrement())
+  name     String        @unique
+  category SkillCategory
+
+  aliases    SkillAlias[]
+  postings   PostingSkill[]
+  dailyStats DailySkillStat[]
+
+  @@map("skills")
+}
+
+/// Python `re` pattern, applied case-insensitively over title + description.
+model SkillAlias {
+  id               Int     @id @default(autoincrement())
+  skillId          Int     @map("skill_id")
+  pattern          String
+  /// (+) Only match inside a requirements/skills section extracted with BeautifulSoup.
+  requirementsOnly Boolean @default(false) @map("requirements_only")
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([skillId, pattern])
+  @@map("skill_aliases")
+}
+
+model PostingSkill {
+  postingId Int @map("posting_id")
+  skillId   Int @map("skill_id")
+
+  posting Posting @relation(fields: [postingId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([postingId, skillId])
+  @@index([skillId])
+  @@map("posting_skills")
+}
+
+// ---------------------------------------------------------------- reference + aggregates
+
+model ExchangeRate {
+  date       DateTime @db.Date
+  /// ISO 4217
+  currency   String   @db.Char(3)
+  phpPerUnit Decimal  @map("php_per_unit") @db.Decimal(14, 6)
+
+  @@id([date, currency])
+  @@map("exchange_rates")
+}
+
+model DailySkillStat {
+  date            DateTime @db.Date
+  skillId         Int      @map("skill_id")
+  activePostings  Int      @default(0) @map("active_postings")
+  newPostings     Int      @default(0) @map("new_postings")
+  medianSalaryPhp Int?     @map("median_salary_php")
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([date, skillId])
+  @@index([skillId, date])
+  @@map("daily_skill_stats")
 }

@@ -1,0 +1,467 @@
+{
+  "$comment": "Skill dictionary: single source of truth. Seeded into skills/skill_aliases by prisma/seed.ts and tested by scraper/tests/test_skills.py. Patterns are Python `re`, applied with re.IGNORECASE over title + description; use (?-i:...) for case-sensitive parts. Every skill needs >=1 'match' and >=1 'no_match' example. requirements_only aliases only apply inside an extracted requirements section.",
+  "skills": [
+    {
+      "name": "Python",
+      "category": "language",
+      "aliases": [{ "pattern": "\\bpython\\b" }],
+      "match": ["Senior Python Developer", "Stack: Python 3.12, FastAPI"],
+      "no_match": ["Experience with Jython is a plus", "PythonAnywhere account"]
+    },
+    {
+      "name": "JavaScript",
+      "category": "language",
+      "aliases": [
+        { "pattern": "\\bjavascript\\b" },
+        { "pattern": "\\becmascript\\b" },
+        { "pattern": "(?<![.\\w])js\\b(?!\\s*\\d)" }
+      ],
+      "match": ["Strong JavaScript skills", "Vanilla JS, HTML, CSS", "ECMAScript 2022"],
+      "no_match": ["Node.js backend services", "Java and Kotlin"]
+    },
+    {
+      "name": "TypeScript",
+      "category": "language",
+      "aliases": [{ "pattern": "\\btypescript\\b" }],
+      "match": ["TypeScript everywhere", "React + Typescript"],
+      "no_match": ["TS/SCI clearance required", "typescripts of the screenplay"]
+    },
+    {
+      "name": "Java",
+      "category": "language",
+      "aliases": [{ "pattern": "\\bjava\\b(?!\\s*script)" }],
+      "match": ["Java 21 and Spring Boot", "Backend: Java/Kotlin"],
+      "no_match": ["JavaScript developer", "Java Script basics", "Javanese language skills"]
+    },
+    {
+      "name": "Go",
+      "category": "language",
+      "aliases": [
+        { "pattern": "\\bgolang\\b" },
+        {
+          "pattern": "\\bgo\\s+(?:developer|engineer|programmer|programming|backend|services?)\\b"
+        },
+        { "pattern": "(?:^|[,/(:]\\s*)(?-i:Go)(?=\\s*(?:[,/)]|$))" }
+      ],
+      "match": ["Senior Golang Engineer", "Go developer (remote)", "Stack: Python, Go, Postgres"],
+      "no_match": [
+        "Let's go!",
+        "ready to go live next month",
+        "your go-to person for infra",
+        "Go to market strategy"
+      ]
+    },
+    {
+      "name": "PHP",
+      "category": "language",
+      "aliases": [
+        { "pattern": "(?<!\\d)(?<!\\d )\\bphp\\b(?!\\s*(?:₱|\\d{2,}|\\d[\\d,.]*\\s*k\\b))" }
+      ],
+      "match": [
+        "PHP 8 and Laravel",
+        "experience in PHP",
+        "PHP 7.4 legacy code",
+        "Stack: PHP, MySQL"
+      ],
+      "no_match": [
+        "Salary: PHP 50,000 per month",
+        "40,000 PHP monthly",
+        "PHP40k-60k",
+        "PHP 5k internet allowance",
+        "₱30,000 / PHP 30,000"
+      ]
+    },
+    {
+      "name": "Ruby",
+      "category": "language",
+      "aliases": [{ "pattern": "\\bruby\\b(?!\\s+(?:red|ring|jewel))" }],
+      "match": ["Ruby on Rails developer", "Ruby, Elixir"],
+      "no_match": ["ruby red grapefruit", "Rubyist community"]
+    },
+    {
+      "name": "C#",
+      "category": "language",
+      "aliases": [{ "pattern": "(?<![\\w#])c#(?![\\w#])" }, { "pattern": "\\bc\\s?sharp\\b" }],
+      "match": ["C# and .NET 8", "Strong C#/ASP.NET background", "csharp"],
+      "no_match": ["F# experience", "C++ developer"]
+    },
+    {
+      "name": "C++",
+      "category": "language",
+      "aliases": [{ "pattern": "(?<![\\w+])c\\+\\+(?!\\w)" }, { "pattern": "\\bcpp\\b" }],
+      "match": ["Modern C++ (17/20)", "C++, Python", "cpp developer"],
+      "no_match": ["C# developer", "C developer for firmware"]
+    },
+    {
+      "name": "C",
+      "category": "language",
+      "aliases": [
+        { "pattern": "\\b(?-i:C)\\s+(?:programming|language|developer)\\b" },
+        { "pattern": "\\b(?:embedded|ansi)\\s+(?-i:C)\\b(?![+#])" },
+        { "pattern": "(?:^|[,/(:]\\s*)(?-i:C)(?=\\s*(?:[,/)]|$))" }
+      ],
+      "match": [
+        "Embedded C for microcontrollers",
+        "Languages: C, C++, Rust",
+        "C programming experience"
+      ],
+      "no_match": [
+        "C-level executives",
+        "C++ developer",
+        "C# developer",
+        "Series C startup",
+        "Plan B or C"
+      ]
+    },
+    {
+      "name": "Rust",
+      "category": "language",
+      "aliases": [
+        { "pattern": "\\brust\\s+(?:developer|engineer|programmer|programming|backend)\\b" },
+        { "pattern": "\\brustlang\\b" },
+        { "pattern": "(?:^|[,/(:]\\s*)(?-i:Rust)(?=\\s*(?:[,/)]|$))" }
+      ],
+      "match": ["Senior Rust Engineer", "Stack: Go, Rust, gRPC"],
+      "no_match": ["rust-proof coating", "Rust Belt manufacturing", "remove rust from pipes"]
+    },
+    {
+      "name": "Kotlin",
+      "category": "language",
+      "aliases": [{ "pattern": "\\bkotlin\\b" }],
+      "match": ["Android (Kotlin)", "Kotlin Multiplatform"],
+      "no_match": ["Kotlinsky Street office"]
+    },
+    {
+      "name": "Swift",
+      "category": "language",
+      "aliases": [
+        { "pattern": "\\bswift\\s?ui\\b" },
+        { "pattern": "\\bswift\\s+(?:developer|engineer|programming|language)\\b" },
+        { "pattern": "(?:^|[,/(:]\\s*)(?-i:Swift)(?=\\s*(?:[,/)]|$))" }
+      ],
+      "match": ["iOS: SwiftUI", "Swift developer", "Mobile: Swift, Kotlin"],
+      "no_match": ["swift delivery times", "SWIFT payments integration", "Taylor Swift fan"]
+    },
+    {
+      "name": "Dart",
+      "category": "language",
+      "aliases": [
+        { "pattern": "\\bdart\\s+(?:developer|programming|language)\\b" },
+        { "pattern": "\\bflutter\\s*/\\s*dart\\b|\\bdart\\s*/\\s*flutter\\b" },
+        { "pattern": "(?:^|[,/(:]\\s*)(?-i:Dart)(?=\\s*(?:[,/)]|$))" }
+      ],
+      "match": ["Flutter/Dart mobile app", "Languages: Dart, Kotlin"],
+      "no_match": ["dart board in the office", "DART train commute"]
+    },
+    {
+      "name": "R",
+      "category": "language",
+      "aliases": [
+        { "pattern": "\\b(?-i:R)\\s+(?:programming|language|developer|shiny)\\b" },
+        { "pattern": "\\brstudio\\b|\\btidyverse\\b" },
+        { "pattern": "(?:^|[,/(:]\\s*)(?-i:R)(?=\\s*(?:[,/)]|$))" }
+      ],
+      "match": ["Statistics in R programming", "Python, R, SQL", "RStudio"],
+      "no_match": ["R&D team", "r/programming", "Series R"]
+    },
+    {
+      "name": "SQL",
+      "category": "language",
+      "aliases": [{ "pattern": "\\bsql\\b" }],
+      "match": ["Strong SQL skills", "SQL and dbt"],
+      "no_match": ["NoSQL databases", "MySQL admin", "PostgreSQL"]
+    },
+    {
+      "name": "Scala",
+      "category": "language",
+      "aliases": [{ "pattern": "\\bscala\\b" }],
+      "match": ["Scala and Spark", "Scala/Akka"],
+      "no_match": ["highly scalable systems"]
+    },
+    {
+      "name": "Elixir",
+      "category": "language",
+      "aliases": [{ "pattern": "\\belixir\\b(?!\\s+of)" }],
+      "match": ["Elixir/Phoenix", "Elixir developer"],
+      "no_match": ["the elixir of life"]
+    },
+    {
+      "name": "React",
+      "category": "framework",
+      "aliases": [
+        { "pattern": "\\breact\\.?js\\b" },
+        { "pattern": "\\b(?-i:React)\\b(?![\\s-]*(?-i:Native))" }
+      ],
+      "match": ["React + TypeScript", "ReactJS developer", "React.js"],
+      "no_match": ["react quickly to customer issues", "React Native developer"]
+    },
+    {
+      "name": "React Native",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\breact[\\s-]?native\\b" }],
+      "match": ["React Native developer", "react-native apps"],
+      "no_match": ["React web developer", "native app"]
+    },
+    {
+      "name": "Next.js",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bnext\\.?js\\b|\\bnext\\s+js\\b" }],
+      "match": ["Next.js 15 App Router", "NextJS"],
+      "no_match": ["next job", "your next step"]
+    },
+    {
+      "name": "Vue",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bvue(?:\\.?js)?\\b" }, { "pattern": "\\bnuxt(?:\\.?js)?\\b" }],
+      "match": ["Vue 3 + Pinia", "VueJS", "Nuxt"],
+      "no_match": ["comedy revue"]
+    },
+    {
+      "name": "Angular",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bangular(?:js)?\\b(?!\\s+momentum)" }],
+      "match": ["Angular 17", "AngularJS migration"],
+      "no_match": ["triangular layout", "angular momentum"]
+    },
+    {
+      "name": "Svelte",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bsvelte(?:kit)?\\b" }],
+      "match": ["SvelteKit", "Svelte 5"],
+      "no_match": ["svelt design"]
+    },
+    {
+      "name": "Node.js",
+      "category": "framework",
+      "aliases": [
+        { "pattern": "\\bnode\\.?js\\b|\\bnode\\s+js\\b" },
+        { "pattern": "\\bnode(?=\\s*/\\s*(?:express|nest|typescript))" }
+      ],
+      "match": ["Node.js backend", "NodeJS", "Node/Express API"],
+      "no_match": ["Kubernetes node pools", "graph node traversal"]
+    },
+    {
+      "name": "Express",
+      "category": "framework",
+      "aliases": [
+        { "pattern": "\\bexpress\\.?js\\b" },
+        { "pattern": "\\bnode(?:\\.?js)?\\s*(?:/|&|and)\\s*express\\b" }
+      ],
+      "match": ["Express.js REST APIs", "Node/Express", "Node.js and Express"],
+      "no_match": ["express interest by email", "American Express card", "express delivery"]
+    },
+    {
+      "name": "NestJS",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bnest\\.?js\\b" }],
+      "match": ["NestJS microservices", "Nest.js"],
+      "no_match": ["nest egg savings"]
+    },
+    {
+      "name": "Django",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bdjango\\b" }],
+      "match": ["Django REST Framework", "Python/Django"],
+      "no_match": ["Djangos restaurant"]
+    },
+    {
+      "name": "Flask",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bflask\\b(?!\\s+of)" }],
+      "match": ["Flask APIs", "Python (Flask)"],
+      "no_match": ["a flask of coffee"]
+    },
+    {
+      "name": "FastAPI",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bfast\\s?api\\b" }],
+      "match": ["FastAPI services", "Fast API"],
+      "no_match": ["fast APIs are great", "fast-paced"]
+    },
+    {
+      "name": "Laravel",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\blaravel\\b" }],
+      "match": ["PHP/Laravel developer", "Laravel 11"],
+      "no_match": ["Lara Vel (name)"]
+    },
+    {
+      "name": "Spring",
+      "category": "framework",
+      "aliases": [
+        { "pattern": "\\bspring\\s*boot\\b" },
+        { "pattern": "\\bspring\\s+(?:framework|mvc|cloud|security|data|webflux)\\b" }
+      ],
+      "match": ["Java / Spring Boot", "Spring Framework 6", "SpringBoot"],
+      "no_match": ["Spring 2026 intake", "spring cleaning", "hot spring resort"]
+    },
+    {
+      "name": "Ruby on Rails",
+      "category": "framework",
+      "aliases": [
+        { "pattern": "\\bruby\\s+on\\s+rails\\b|\\bror\\b" },
+        { "pattern": "\\brails\\s+(?:developer|engineer|app|apps|api)\\b" },
+        { "pattern": "(?:^|[,/(:]\\s*)(?-i:Rails)(?=\\s*(?:[,/)]|$))" }
+      ],
+      "match": ["Ruby on Rails developer", "Rails engineer", "Stack: Ruby, Rails, Postgres"],
+      "no_match": ["guard rails for AI", "off the rails"]
+    },
+    {
+      "name": ".NET",
+      "category": "framework",
+      "aliases": [
+        { "pattern": "(?<![\\w.])\\.net\\b" },
+        { "pattern": "\\basp\\.net\\b|\\bdotnet\\b" }
+      ],
+      "match": [".NET 8", "C#/ASP.NET Core", "dotnet developer"],
+      "no_match": ["apply at jobs.example.net", "safety net"]
+    },
+    {
+      "name": "Flutter",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\bflutter\\b" }],
+      "match": ["Flutter developer", "Flutter/Dart"],
+      "no_match": ["butterflies flutterby"]
+    },
+    {
+      "name": "Tailwind CSS",
+      "category": "framework",
+      "aliases": [{ "pattern": "\\btailwind(?:\\s?css)?\\b" }],
+      "match": ["Tailwind CSS", "React + Tailwind"],
+      "no_match": ["tailwinds for growth"]
+    },
+    {
+      "name": "PostgreSQL",
+      "category": "database",
+      "aliases": [{ "pattern": "\\bpostgre(?:s|sql)\\b" }],
+      "match": ["PostgreSQL 16", "Postgres", "Python, Go, Postgres"],
+      "no_match": ["post-graduate degree"]
+    },
+    {
+      "name": "MySQL",
+      "category": "database",
+      "aliases": [{ "pattern": "\\bmysql\\b" }],
+      "match": ["MySQL 8", "LAMP (Linux, Apache, MySQL, PHP)"],
+      "no_match": ["PostgreSQL only"]
+    },
+    {
+      "name": "MongoDB",
+      "category": "database",
+      "aliases": [{ "pattern": "\\bmongo(?:db)?\\b" }],
+      "match": ["MongoDB Atlas", "Mongo"],
+      "no_match": ["Mongolia office"]
+    },
+    {
+      "name": "Redis",
+      "category": "database",
+      "aliases": [{ "pattern": "\\bredis\\b" }],
+      "match": ["Redis caching", "Redis/Valkey"],
+      "no_match": ["rediscover your career"]
+    },
+    {
+      "name": "Elasticsearch",
+      "category": "database",
+      "aliases": [{ "pattern": "\\belastic\\s?search\\b" }],
+      "match": ["Elasticsearch", "Elastic Search clusters"],
+      "no_match": ["elastic scaling"]
+    },
+    {
+      "name": "DynamoDB",
+      "category": "database",
+      "aliases": [{ "pattern": "\\bdynamo\\s?db\\b" }],
+      "match": ["DynamoDB", "Dynamo DB"],
+      "no_match": ["dynamo of a salesperson"]
+    },
+    {
+      "name": "SQL Server",
+      "category": "database",
+      "aliases": [{ "pattern": "\\b(?:ms\\s?)?sql\\s+server\\b|\\bmssql\\b|\\bt-sql\\b" }],
+      "match": ["Microsoft SQL Server", "MSSQL", "T-SQL"],
+      "no_match": ["MySQL server", "SQL skills"]
+    },
+    {
+      "name": "Docker",
+      "category": "tool",
+      "aliases": [{ "pattern": "\\bdocker\\b" }],
+      "match": ["Docker and Compose", "Docker/Kubernetes"],
+      "no_match": ["dockerless deployment", "dock worker"]
+    },
+    {
+      "name": "Kubernetes",
+      "category": "tool",
+      "aliases": [{ "pattern": "\\bkubernetes\\b|\\bk8s\\b" }],
+      "match": ["Kubernetes (EKS)", "k8s"],
+      "no_match": ["kube cleaning supplies"]
+    },
+    {
+      "name": "Terraform",
+      "category": "tool",
+      "aliases": [{ "pattern": "\\bterraform\\b" }],
+      "match": ["Terraform IaC", "Terraform/Pulumi"],
+      "no_match": ["terraforming Mars"]
+    },
+    {
+      "name": "Git",
+      "category": "tool",
+      "aliases": [{ "pattern": "\\bgit\\b" }],
+      "match": ["Git workflows", "Git, Docker"],
+      "no_match": ["legit opportunity", "digital agency", "GitHub Actions"]
+    },
+    {
+      "name": "GitHub Actions",
+      "category": "tool",
+      "aliases": [{ "pattern": "\\bgithub\\s+actions\\b" }],
+      "match": ["CI with GitHub Actions"],
+      "no_match": ["GitHub profile link"]
+    },
+    {
+      "name": "GraphQL",
+      "category": "tool",
+      "aliases": [{ "pattern": "\\bgraphql\\b" }],
+      "match": ["GraphQL APIs", "Apollo GraphQL"],
+      "no_match": ["graph databases"]
+    },
+    {
+      "name": "Kafka",
+      "category": "tool",
+      "aliases": [{ "pattern": "\\bkafka\\b" }],
+      "match": ["Kafka streams", "Kafka/RabbitMQ"],
+      "no_match": ["a Kafkaesque process"]
+    },
+    {
+      "name": "Linux",
+      "category": "tool",
+      "aliases": [{ "pattern": "\\blinux\\b" }],
+      "match": ["Linux administration", "Ubuntu Linux"],
+      "no_match": ["Linuxify brand"]
+    },
+    {
+      "name": "AWS",
+      "category": "cloud",
+      "aliases": [{ "pattern": "\\baws\\b|\\bamazon\\s+web\\s+services\\b" }],
+      "match": ["AWS (Lambda, S3)", "Amazon Web Services"],
+      "no_match": ["laws and regulations", "jaws of life"]
+    },
+    {
+      "name": "GCP",
+      "category": "cloud",
+      "aliases": [{ "pattern": "\\bgcp\\b|\\bgoogle\\s+cloud(?:\\s+platform)?\\b" }],
+      "match": ["GCP (BigQuery)", "Google Cloud Platform"],
+      "no_match": ["Google Docs", "cloud-native"]
+    },
+    {
+      "name": "Azure",
+      "category": "cloud",
+      "aliases": [{ "pattern": "\\bazure\\b(?!\\s+(?:blue|sky|sea|waters?))" }],
+      "match": ["Microsoft Azure", "Azure DevOps"],
+      "no_match": ["azure blue walls", "the azure sea"]
+    },
+    {
+      "name": "Firebase",
+      "category": "cloud",
+      "aliases": [{ "pattern": "\\bfirebase\\b" }],
+      "match": ["Firebase Auth", "Firebase/Firestore"],
+      "no_match": ["fire base camp"]
+    }
+  ]
+}

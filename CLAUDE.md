@@ -44,7 +44,7 @@ Full design: @docs/SPEC.md · Source registry: @docs/SOURCES.md
 ```bash
 # scraper (from repo root)
 uv sync --project scraper                                   # install deps (Python 3.12 auto-installed)
-uv run --project scraper pytest                             # tests (fixtures only)
+uv run --project scraper python -m pytest                   # tests (fixtures only)
 uv run --project scraper ruff check scraper                 # lint
 uv run --project scraper ruff format scraper                # format
 uv run --project scraper python -m scraper.pipeline --source <name> --dry-run   # (step 3+)
@@ -56,7 +56,10 @@ pnpm lint | pnpm typecheck | pnpm test | pnpm format
 pnpm build                   # prisma generate + next build
 pnpm db:migrate --name <x>   # prisma migrate dev (MIGRATE_DATABASE_URL)
 pnpm db:deploy               # prisma migrate deploy
-pnpm db:seed                 # idempotent seed: sources, skills, aliases
+pnpm db:seed                 # idempotent seed: sources, skills, aliases (prisma/data/skills.json)
+
+# Neon roles (repo root): add --grants-only to re-apply grants without rotating passwords
+uv run --project scraper python scripts/setup_db_roles.py
 
 # Claude Code hooks self-test
 uv run --no-project python .claude/hooks/test_hooks.py
@@ -67,5 +70,10 @@ uv run --no-project python .claude/hooks/test_hooks.py
 - `guard_bash.py` blocks shell commands that name forbidden job-site domains.
 - `format_file.py` runs ruff on `.py` files and Prettier + ESLint on dashboard TS/JS after each edit, and reports leftover lint problems.
 
+## Gotchas
+- **Smart App Control is on** in this Windows install, and it sometimes blocks uv's venv launchers (`.venv/Scripts/python.exe`, `pytest.exe`) with "An Application Control policy has blocked this file". Fix it with `cd scraper && uv venv --clear && uv sync`. Prefer `python -m pytest` over the `pytest.exe` shim.
+- **Neon connections can fail on the first try** (P1001 / timeouts) while the compute wakes from scale-to-zero. Retry once before debugging.
+- **Skills live in `dashboard/prisma/data/skills.json`.** Each skill carries its own `match` / `no_match` examples. Use `/add-skill-tag`.
+
 ## Status
-Build step 1 (skeleton and tooling) is done. Next is step 2: Neon roles, `schema.prisma` models, the first migration, and the seed. See SPEC §10.
+Steps 1–2 are done: the skeleton, the Neon roles, the full schema with migration `init`, and seeded data (4 sources, all `is_active=false` until their adapters exist; 55 skills; 79 aliases). Next is step 3: `scraper/http.py`, then Remotive via `/add-source remotive`. See SPEC §10.
