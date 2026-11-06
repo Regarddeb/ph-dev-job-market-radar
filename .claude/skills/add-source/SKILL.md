@@ -19,16 +19,23 @@ Follow these steps in order. Stop and report at the first failure.
 
 ## 2. Save one fixture
 
-- Fetch **one** response from the documented endpoint using `scraper/http.py`'s shared client (identifying User-Agent, rate limit), or with `curl -A "$SCRAPER_USER_AGENT"` if `http.py` doesn't exist yet.
-- Save it unmodified as `scraper/tests/fixtures/$source/<YYYY-MM-DD>.<json|xml|html>`.
-- Fixtures are immutable. Never edit an existing one; a hook blocks it. If the site changed, save a new dated file.
+- Write `fetch_pages` first (step 3), add the slug to `ADAPTERS` in `scraper/sources/__init__.py`, then capture **one** response through the shared client:
+  `uv run --project scraper python -m scraper.capture $source`
+  It saves `scraper/tests/fixtures/$source/<YYYY-MM-DD>.<ext>` byte-for-byte and never overwrites an existing file.
+- Fixtures are immutable. Never edit an existing one; a hook blocks it. If the site changed, capture a new dated file.
 - If the payload is large, keep it as is. Don't hand-trim JSON; that hides real-world edge cases.
+- **Profile the fixture before writing tests.** Look at the encoding (mojibake), HTML entities, salary units, and irrelevant (non-dev) items. Remote OK had all four.
 
 ## 3. Write the adapter: `scraper/sources/$source.py`
 
-- Expose module-level constants `SOURCE_NAME`, `KIND` (`api` | `rss` | `html`) and `BASE_URL`.
-- `fetch(client) -> Iterable[RawItem]`: one request per page, at the source's allowed rate. Yield `external_id`, `url`, `payload` (raw text). Don't parse here.
-- `parse(raw: RawItem) -> dict`: return the common posting dict validated by the shared pydantic model. Fill only fields the payload actually states. **Never guess**: leave salary, seniority, `ph_eligible`, etc. as `None`/`"unspecified"` and let `scraper/normalize/` derive them.
+Follow `scraper/sources/remoteok.py`. Required module members (enforced by `tests/test_sources_registry.py`):
+- Constants: `SLUG`, `SOURCE_NAME` (exactly as in SOURCES.md), `KIND` (`api` | `rss` | `html`), `BASE_URL`, `FIXTURE_EXT`.
+- `fetch_pages(client) -> Iterator[Page]`: one request per page, at the source's allowed rate, through `scraper.http.HttpClient` only.
+- `split(page) -> Iterator[RawItem]`: one item per posting, with `external_id`, `url` and `payload` (raw JSON/HTML of that one item). Skip non-job elements.
+- `fetch(client)`: `fetch_pages` + `split`.
+- `parse(raw) -> ParsedPosting` (`scraper/models.py`): fill only fields the payload actually states. **Never guess**: leave salary period, seniority, `ph_eligible`, etc. as `None`/`"unspecified"` and let `scraper/normalize/` derive them.
+- `is_relevant(posting) -> bool`: developer roles only. Irrelevant items are still stored raw.
+- Clean text with `scraper.normalize.text.clean_text` / `html_to_text` (entities, mojibake, block vs inline HTML).
 - `source_url` must be the posting's own URL on that source (for attribution).
 - Use BeautifulSoup + lxml for HTML fragments and feedparser for RSS. Don't use regex on raw HTML.
 - No LLM or AI API calls, ever.
@@ -40,11 +47,14 @@ Follow these steps in order. Stop and report at the first failure.
   - the full parsed dict for 2–3 representative postings
   - edge cases found in the fixture (missing salary, HTML in description, odd location text)
   - source-specific quirks (e.g. Remote OK: the first element is a legal notice and is skipped)
-- Run: `uv run --project scraper pytest scraper/tests/test_source_$source.py`
+  - the relevance filter (counts of dev vs non-dev items)
+- Run: `uv run --project scraper python -m pytest scraper/tests/test_source_$source.py`
+- Then a dry run over the fixture, with no network and no DB:
+  `uv run --project scraper python -m scraper.pipeline --source $source --dry-run --fixture <fixture>`
 
 ## 5. Seed row: `dashboard/prisma/seed.ts`
 
-- Add an idempotent upsert for the `sources` row: `name`, `base_url`, `kind`, `is_active: true`, `crawl_interval_minutes` (≥ 1440 unless the terms allow more often), `attribution_text` (e.g. "via Remotive"), `terms_url`.
+- In `SOURCES`, set the source's `isActive: true` and `termsUrl`, and keep `slug`, `name`, `baseUrl`, `kind`, `crawlIntervalMinutes` (≥ 1440 unless the terms allow more often) and `attributionText` (e.g. "via Remote OK"). Then run `pnpm db:seed`. The pipeline refuses to run a source whose row has `is_active=false`.
 
 ## 6. Workflow step: `.github/workflows/scrape.yml`
 

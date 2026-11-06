@@ -14,10 +14,15 @@ The single source of truth for which job sites the scraper may touch. `/add-sour
 
 | Source | Kind | Access | Rules | Status | Terms checked | Terms URL |
 | --- | --- | --- | --- | --- | --- | --- |
-| Remotive | api | `https://remotive.com/api/remote-jobs?category=software-dev` | ≤ ~4 requests/day (poll once daily). Jobs are delayed 24 h. Don't resubmit listings to other job boards. Link back to the Remotive job URL and name Remotive as the source. | Allowed | _not yet re-verified_ | |
-| Remote OK | api | `https://remoteok.com/api` (optional `?tags=`) | Returns only the latest ~100. The first array element is a legal notice; skip it. Use a followed (not nofollow) link back and name Remote OK as the source. | Allowed | _not yet re-verified_ | |
+| Remote OK | api | `https://remoteok.com/api` (optional `?tags=`) | Returns only the latest ~100. The first array element is a legal notice; skip it. API ToS (in that element): "Please link back (with follow, and without nofollow!) to the URL on Remote OK and mention Remote OK as a source … If you do not we'll have to suspend API access." Don't use the logo (registered trademark); do use the name "Remote OK". robots.txt: `User-agent: *` → `Allow: /`, `Content-Signal: search=yes,ai-train=no` (named AI crawlers are blocked; we're not an AI crawler, and the app makes no AI use). Poll once daily. | Allowed | 2026-11-06 | `https://remoteok.com/api` (legal notice) |
+| HN "Who is Hiring?" | api + html | Official HN API `https://hacker-news.firebaseio.com/v0/` (items, `user/whoishiring.json`); comment bodies parsed with BeautifulSoup | API README: "There is currently no rate limit." MIT-licensed docs; no stated usage restrictions. `news.ycombinator.com` robots.txt has `Crawl-delay: 30`, so only the API is fetched (never the HTML site). Still be polite (≥ 1 s between requests). Link to the comment `https://news.ycombinator.com/item?id=<id>`. Also the 5-year backfill source. | Allowed | 2026-11-06 | `https://github.com/HackerNews/API` |
 | We Work Remotely | rss | Programming-category RSS feeds | Verify the terms first. Link back to the listing. | Allowed (verify terms) | _not yet re-verified_ | |
-| HN "Who is Hiring?" | api + html | Official HN API (Firebase); comment bodies parsed with BeautifulSoup | Polite request rate. Link to the comment. Also the 5-year backfill source. | Allowed | _not yet re-verified_ | |
+
+## Unclear: don't implement until resolved
+
+| Source | Kind | Access | Why unclear | Status | Terms checked | Terms URL |
+| --- | --- | --- | --- | --- | --- | --- |
+| Remotive | api | `https://remotive.com/api/remote-jobs?category=software-dev` | Conflicting signals. **API page** invites public use: "max. 4 times a day", "excessive requests (more than 2x per minute) will be blocked", "link back to the URL found on Remotive AND mention Remotive as a source", "do not submit Remotive jobs to third Party websites", jobs delayed 24 h. **robots.txt** (`User-agent: *`): `Disallow: /api/*`, `Disallow: /*category=`. **Terms of Use** (updated March 2026, §8): "You agree not to … Scrape, crawl, or use automated means to access the Site or extract data without our written permission." **Next step:** ask Remotive for written permission. If they grant it, store the reply in `docs/permissions/remotive.md` and move it back to Allowed. | Unclear | 2026-11-06 | `https://remotive.com/terms-of-use`, `https://remotive.com/remote-jobs/api` |
 
 ## Candidates (vet with `source-researcher` before use)
 

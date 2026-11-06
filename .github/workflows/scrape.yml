@@ -1,0 +1,52 @@
+name: scrape
+
+# Daily at 01:07 Manila (17:07 UTC). GitHub may start scheduled runs late; the pipeline is
+# idempotent, so late, skipped or repeated runs are fine.
+on:
+  schedule:
+    - cron: "7 17 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }} # jobradar_rw role (no DDL)
+      SCRAPER_USER_AGENT: ${{ secrets.SCRAPER_USER_AGENT }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.3 # no floating major tag is published
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: scraper/uv.lock
+
+      - name: Install scraper
+        run: uv sync --project scraper --frozen
+
+      - name: Tests (fixtures only)
+        run: uv run --project scraper python -m pytest -q
+
+      # One step per source. continue-on-error keeps one broken source from blocking the
+      # others; each failure is still recorded in crawl_runs and fails the job at the end.
+      - name: Source - remoteok
+        id: remoteok
+        continue-on-error: true
+        run: uv run --project scraper python -m scraper.pipeline --source remoteok
+
+      # Next (build steps 7 and 10): aggregate.py, retention.py, POST /api/revalidate.
+
+      - name: Fail if any source failed
+        if: steps.remoteok.outcome == 'failure'
+        run: |
+          echo "::error::One or more sources failed; see crawl_runs and the step logs."
+          exit 1

@@ -28,7 +28,8 @@ type SourceSeed = {
   termsUrl: string | null;
 };
 
-// Only sources marked Allowed in docs/SOURCES.md. Slugs are Python module names.
+// Sources from docs/SOURCES.md. Slugs are Python module names. Remotive is "Unclear"
+// (2026-11-06: robots.txt + Terms of Use conflict with its API page) and stays inactive.
 const SOURCES: SourceSeed[] = [
   {
     slug: "remotive",
@@ -47,8 +48,8 @@ const SOURCES: SourceSeed[] = [
     kind: SourceKind.api,
     attributionText: "via Remote OK",
     crawlIntervalMinutes: 1440,
-    isActive: false,
-    termsUrl: null,
+    isActive: true, // adapter: scraper/sources/remoteok.py (terms checked 2026-11-06)
+    termsUrl: "https://remoteok.com/api",
   },
   {
     slug: "weworkremotely",
@@ -68,7 +69,7 @@ const SOURCES: SourceSeed[] = [
     attributionText: "via Hacker News",
     crawlIntervalMinutes: 1440,
     isActive: false,
-    termsUrl: null,
+    termsUrl: "https://github.com/HackerNews/API",
   },
 ];
 

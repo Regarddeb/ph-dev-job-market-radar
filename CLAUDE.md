@@ -47,7 +47,10 @@ uv sync --project scraper                                   # install deps (Pyth
 uv run --project scraper python -m pytest                   # tests (fixtures only)
 uv run --project scraper ruff check scraper                 # lint
 uv run --project scraper ruff format scraper                # format
-uv run --project scraper python -m scraper.pipeline --source <name> --dry-run   # (step 3+)
+uv run --project scraper python -m scraper.pipeline --source <slug> --dry-run   # fetch+parse, no writes
+uv run --project scraper python -m scraper.pipeline --source <slug>             # full run into Neon
+uv run --project scraper python -m scraper.pipeline --source <slug> --fixture <file> [--dry-run]  # no network
+uv run --project scraper python -m scraper.capture <slug>                       # save a new dated fixture
 
 # dashboard (cd dashboard)
 pnpm install                 # also runs prisma generate
@@ -75,5 +78,8 @@ uv run --no-project python .claude/hooks/test_hooks.py
 - **Neon connections can fail on the first try** (P1001 / timeouts) while the compute wakes from scale-to-zero. Retry once before debugging.
 - **Skills live in `dashboard/prisma/data/skills.json`.** Each skill carries its own `match` / `no_match` examples. Use `/add-skill-tag`.
 
+- **Adapters must be in the `ADAPTERS` allowlist** (`scraper/sources/__init__.py`) and Allowed in SOURCES.md. `tests/test_sources_registry.py` enforces both.
+- **Remote OK's data has mojibake and HTML entities in the source itself**, and its feed mixes non-dev jobs. `clean_text` / `html_to_text` and `is_relevant` handle both. Salary values below USD 10k aren't treated as annual (no period is guessed).
+
 ## Status
-Steps 1–2 are done: the skeleton, the Neon roles, the full schema with migration `init`, and seeded data (4 sources, all `is_active=false` until their adapters exist; 55 skills; 79 aliases). Next is step 3: `scraper/http.py`, then Remotive via `/add-source remotive`. See SPEC §10.
+Steps 1–3 are done. **Remote OK is live end to end**: 73 dev postings in Neon, and the daily `scrape.yml` is in place. **Remotive is "Unclear"** (robots.txt + Terms of Use vs its API page) and waits for written permission. Next is step 4: a bare postings table page on the dashboard. See SPEC §10.

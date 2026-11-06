@@ -16,7 +16,8 @@ allowed-tools: Bash(uv run --project scraper python -m scraper.pipeline *)
    uv run --project scraper python -m scraper.pipeline --source $source --dry-run
    ```
 
-   `--dry-run` fetches and parses but writes nothing to the database. Run it **once**: sources such as Remotive allow only a few requests per day. Don't re-run just to retry; reuse the output.
+   `--dry-run` fetches and parses but writes nothing to the database. Run it **once**: sources may allow only a few requests per day. Don't re-run just to retry; reuse the output.
+   To re-check parsing without the network, add `--fixture scraper/tests/fixtures/$source/<file>`.
 3. Report as a compact table:
 
    | Metric | Value |

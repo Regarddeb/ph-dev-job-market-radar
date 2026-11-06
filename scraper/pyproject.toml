@@ -42,7 +42,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "S"]
 ignore = ["S101"]  # assert is fine in tests
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S"]
+"tests/**" = ["S", "RUF001"]  # tests use real-world Unicode punctuation on purpose
 
 [tool.ruff.lint.isort]
 known-first-party = ["scraper"]
