@@ -21,6 +21,7 @@ jobs:
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }} # jobradar_rw role (no DDL)
       SCRAPER_USER_AGENT: ${{ secrets.SCRAPER_USER_AGENT }}
+      DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }} # empty until the dashboard is deployed
     steps:
       - uses: actions/checkout@v7
 
@@ -57,12 +58,32 @@ jobs:
         continue-on-error: true
         run: uv run --project scraper python -m scraper.dedupe
 
-      # Next (build steps 7 and 10): aggregate.py, retention.py, POST /api/revalidate.
+      # daily_skill_stats for the last 35 days (fills missed days; idempotent).
+      - name: Aggregate
+        id: aggregate
+        continue-on-error: true
+        run: uv run --project scraper python -m scraper.aggregate
+
+      # Next (build step 10): retention.py.
+
+      # Refresh the dashboard's cached pages. Skipped until the dashboard is deployed and
+      # the DASHBOARD_URL secret exists (build step 11).
+      - name: Revalidate dashboard
+        id: revalidate
+        if: env.DASHBOARD_URL != ''
+        continue-on-error: true
+        env:
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+        run: |
+          curl --fail-with-body --silent --show-error --max-time 30 \
+            -X POST -H "Authorization: Bearer $REVALIDATE_SECRET" \
+            "${DASHBOARD_URL%/}/api/revalidate"
 
       - name: Fail if any step failed
         if: >-
           steps.fx.outcome == 'failure' || steps.remoteok.outcome == 'failure' ||
-          steps.dedupe.outcome == 'failure'
+          steps.dedupe.outcome == 'failure' || steps.aggregate.outcome == 'failure' ||
+          steps.revalidate.outcome == 'failure'
         run: |
           echo "::error::One or more sources failed; see crawl_runs and the step logs."
           exit 1

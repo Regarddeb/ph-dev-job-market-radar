@@ -262,6 +262,12 @@ FROM (
 WHERE p.id = fx.id
 """
 
+SQL_DEACTIVATE_UNSEEN = """
+UPDATE postings SET is_active = false
+WHERE source_id = %s AND is_active
+  AND last_seen_at < (SELECT started_at FROM crawl_runs WHERE id = %s)
+"""
+
 SQL_SKILLS_CLEAR = "DELETE FROM posting_skills WHERE posting_id = %s"
 SQL_SKILLS_INSERT = """
 INSERT INTO posting_skills (posting_id, skill_id)
@@ -402,6 +408,11 @@ class Loader:
                 self.conn.execute(
                     "UPDATE sources SET last_crawled_at = now() WHERE id = %s", (self.source_id,)
                 )
+                # Active = listed in the source's latest successful crawl. Only after a
+                # complete, error-free run, and only if it found postings (an empty feed is
+                # more likely an outage than every job closing at once).
+                if stats.relevant:
+                    self.conn.execute(SQL_DEACTIVATE_UNSEEN, (self.source_id, self.run_id))
         self.conn.close()
 
 

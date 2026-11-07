@@ -167,6 +167,12 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 | Matches for me | `/matches` | Public page. Postings matching the owner's skill set, part-time/freelance and PH-eligible, newest first. The skill set is a committed config file (`dashboard/config/my-skills.ts`), not stored in the DB, so the dashboard stays read-only |
 | Ops | `/ops` | `crawl_runs` status/errors per source; last successful run per source (flag > 48 h); DB size (warn > 800 MB) |
 
+- As built (step 7):
+  - **Active** means listed in the source's latest successful crawl. The pipeline clears `is_active` for postings that crawl didn't see.
+  - The Overview "donuts" are ranked horizontal bars. Most postings are `unspecified`, and bars compare the parts more exactly.
+  - Skills compares rolling windows, the last 30 days vs the 30 before, rather than calendar months. Its trend chart shows up to 4 of the top 8 skills, each skill keeping its colour while selected, with end labels and a table view.
+  - Salaries covers postings first seen in the last 90 days. Each posting counts at its (min + max)/2 monthly PHP midpoint. Only skills with n ≥ 3 are charted, and the page cites the ECB for exchange rates.
+  - Chart colours are the validated dataviz categorical slots (`--chart-1..5` in `globals.css`).
 - Every posting row shows a "via <Source>" link to `source_url`.
 - Data loaders use `'use cache'` + `cacheTag` with the tags `postings`, `skill-stats` and `ops`.
 - `POST /api/revalidate` (Bearer `REVALIDATE_SECRET`) calls `revalidateTag(tag, "max")` for each tag.
@@ -185,7 +191,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 4. A bare postings table page (`/postings`), so real data is visible. ✅
 5. Salary, classification and skill-tagging rules, each with fixture tests; ECB exchange rates; title-based dev filter; `reparse` backfill. ✅
 6. Dedupe (`scraper/dedupe.py`, daily step after the sources). ✅
-7. `aggregate.py`, chart widgets, `/api/revalidate` wired to cached loaders.
+7. `aggregate.py`, chart widgets, `/api/revalidate` wired to cached loaders. ✅ (`scrape.yml` calls it once the `DASHBOARD_URL` secret exists.)
 8. HN "Who is Hiring?" parser (the BeautifulSoup showcase) and We Work Remotely RSS.
 9. Workflows: `scrape.yml`, `migrate.yml`, then one run of `backfill-hn.yml`.
 10. `retention.py` and the Ops page DB-size warning.
