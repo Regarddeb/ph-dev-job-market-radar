@@ -82,4 +82,4 @@ uv run --no-project python .claude/hooks/test_hooks.py
 - **Remote OK's data has mojibake and HTML entities in the source itself**, and its feed mixes non-dev jobs. `clean_text` / `html_to_text` and `is_relevant` handle both. Salary values below USD 10k aren't treated as annual (no period is guessed).
 
 ## Status
-Steps 1–3 are done. **Remote OK is live end to end**: 73 dev postings in Neon, and the daily `scrape.yml` is in place. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). Next is step 4: a bare postings table page on the dashboard. See SPEC §10.
+Steps 1–4 are done. **Remote OK is live end to end**: ~75 postings in Neon, and the daily `scrape.yml` is in place. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next is step 5: salary, classification and skill-tagging rules, plus a title check in the dev-role filter. See SPEC §10.

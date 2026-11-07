@@ -160,7 +160,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 1. Repo skeleton, Claude Code setup and docs. ✅
 2. Neon roles; `schema.prisma`; first migration (`prisma migrate dev`); seed sources and ~50 skills with aliases. ✅
 3. `scraper/http.py`, then Remote OK end to end via `/add-source` ✅. Remote OK replaced Remotive, which was excluded on 2026-11-06 because its robots.txt and Terms of Use conflict with its API page (see SOURCES.md, Forbidden).
-4. A bare postings table page, so real data is visible.
+4. A bare postings table page (`/postings`), so real data is visible. ✅
 5. Salary, classification and skill-tagging rules, each with fixture tests.
 6. Dedupe (Remote OK moved to step 3).
 7. `aggregate.py`, chart widgets, `/api/revalidate` wired to cached loaders.
