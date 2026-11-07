@@ -53,6 +53,7 @@ uv run --project scraper python -m scraper.pipeline --source <slug> --fixture <f
 uv run --project scraper python -m scraper.capture <slug>                       # save a new dated fixture
 uv run --project scraper python -m scraper.reparse --source <slug> [--dry-run]  # re-apply rules to stored raw (no fetch)
 uv run --project scraper python -m scraper.fx [--history|--fixture <f>|--capture] [--dry-run]  # ECB rates -> exchange_rates
+uv run --project scraper python -m scraper.dedupe [--dry-run] [--recompute]     # mark duplicates (all sources)
 
 # dashboard (cd dashboard)
 pnpm install                 # also runs prisma generate
@@ -87,4 +88,4 @@ uv run --no-project python .claude/hooks/test_hooks.py
 - **PHP salaries come from ECB cross rates.** Any page that shows a PHP-converted salary must cite the ECB and say the rates are derived (SOURCES.md, Reference data).
 
 ## Status
-Steps 1–5 are done. **Remote OK is live end to end**: 39 dev postings in Neon after the title-based filter, with seniority, job type, ph_eligible, PHP salary (ECB rates since 2021) and skills derived. The daily `scrape.yml` loads rates first. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next is step 6: `dedupe.py` (exact fingerprint + rapidfuzz pass). See SPEC §10.
+Steps 1–6 are done (dedupe runs daily after the sources; no duplicates in the data yet). **Remote OK is live end to end**: 39 dev postings in Neon after the title-based filter, with seniority, job type, ph_eligible, PHP salary (ECB rates since 2021) and skills derived. The daily `scrape.yml` loads rates first. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next is step 7: `aggregate.py` (daily_skill_stats, fill missed days), chart widgets, and `/api/revalidate` wired to the cached loaders. See SPEC §10.

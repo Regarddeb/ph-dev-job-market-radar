@@ -20,7 +20,7 @@ It showcases three things: **web scraping (BeautifulSoup)**, **data processing**
 ```
 Allowed sources ──fetch──> GitHub Actions daily workflow (Python)
                              0. fx.py (ECB rates -> exchange_rates)
-                             1. scraper pipeline (one step per source)
+                             1. scraper pipeline (one step per source), then dedupe.py
                              2. aggregate.py  (daily_skill_stats, fill missed days)
                              3. retention.py  (trim old text)
                              4. POST dashboard /api/revalidate
@@ -135,6 +135,11 @@ Implemented in `scraper/normalize/` (`salary.py`, `classify.py`, `skills.py`) wi
   - Pass 1 (exact): `fingerprint = sha1(company.normalized_name + title_normalized + work_setup)` within 30 days.
   - Pass 2 (fuzzy): same company AND rapidfuzz `token_set_ratio(title) ≥ 90` AND a description similarity check.
   - Duplicates set `canonical_posting_id`. Dashboard queries filter `canonical_posting_id IS NULL`.
+  - Implemented in `scraper/dedupe.py`, which runs after all sources (cross-source).
+  - Pass 2's description check is `fuzz.ratio ≥ 95`, not 90. Lemon.io's different roles share boilerplate and score 91.
+  - Postings without a company never match, and neither do pass-2 pairs missing a description.
+  - The canonical is the earliest-seen posting, and duplicates point straight at it.
+  - Decisions are sticky: a run only adds duplicates among postings first seen in the last 60 days, because trimmed descriptions can't be re-checked. `--recompute` clears and redoes the last 30 days after a rule change.
 
 ## 7. History and retention
 
@@ -179,7 +184,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 3. `scraper/http.py`, then Remote OK end to end via `/add-source` ✅. Remote OK replaced Remotive, which was excluded on 2026-11-06 because its robots.txt and Terms of Use conflict with its API page (see SOURCES.md, Forbidden).
 4. A bare postings table page (`/postings`), so real data is visible. ✅
 5. Salary, classification and skill-tagging rules, each with fixture tests; ECB exchange rates; title-based dev filter; `reparse` backfill. ✅
-6. Dedupe (Remote OK moved to step 3).
+6. Dedupe (`scraper/dedupe.py`, daily step after the sources). ✅
 7. `aggregate.py`, chart widgets, `/api/revalidate` wired to cached loaders.
 8. HN "Who is Hiring?" parser (the BeautifulSoup showcase) and We Work Remotely RSS.
 9. Workflows: `scrape.yml`, `migrate.yml`, then one run of `backfill-hn.yml`.

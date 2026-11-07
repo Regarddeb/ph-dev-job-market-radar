@@ -51,10 +51,18 @@ jobs:
         continue-on-error: true
         run: uv run --project scraper python -m scraper.pipeline --source remoteok
 
+      # Across all sources, after every source has loaded. Only adds duplicates; idempotent.
+      - name: Dedupe
+        id: dedupe
+        continue-on-error: true
+        run: uv run --project scraper python -m scraper.dedupe
+
       # Next (build steps 7 and 10): aggregate.py, retention.py, POST /api/revalidate.
 
-      - name: Fail if any source failed
-        if: steps.fx.outcome == 'failure' || steps.remoteok.outcome == 'failure'
+      - name: Fail if any step failed
+        if: >-
+          steps.fx.outcome == 'failure' || steps.remoteok.outcome == 'failure' ||
+          steps.dedupe.outcome == 'failure'
         run: |
           echo "::error::One or more sources failed; see crawl_runs and the step logs."
           exit 1
