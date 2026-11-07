@@ -51,6 +51,8 @@ uv run --project scraper python -m scraper.pipeline --source <slug> --dry-run   
 uv run --project scraper python -m scraper.pipeline --source <slug>             # full run into Neon
 uv run --project scraper python -m scraper.pipeline --source <slug> --fixture <file> [--dry-run]  # no network
 uv run --project scraper python -m scraper.capture <slug>                       # save a new dated fixture
+uv run --project scraper python -m scraper.reparse --source <slug> [--dry-run]  # re-apply rules to stored raw (no fetch)
+uv run --project scraper python -m scraper.fx [--history|--fixture <f>|--capture] [--dry-run]  # ECB rates -> exchange_rates
 
 # dashboard (cd dashboard)
 pnpm install                 # also runs prisma generate
@@ -80,6 +82,9 @@ uv run --no-project python .claude/hooks/test_hooks.py
 
 - **Adapters must be in the `ADAPTERS` allowlist** (`scraper/sources/__init__.py`) and Allowed in SOURCES.md. `tests/test_sources_registry.py` enforces both.
 - **Remote OK's data has mojibake and HTML entities in the source itself**, and its feed mixes non-dev jobs. `clean_text` / `html_to_text` and `is_relevant` handle both. Salary values below USD 10k aren't treated as annual (no period is guessed).
+- **Remote OK tags are keyword-stuffed** ("Tax Manager" tagged `dev`, `php`). Relevance, job type and ph_eligible never rely on them; the title decides relevance (`classify.is_dev_title`).
+- **After changing any rule in `scraper/normalize/` or a parser**, run `python -m scraper.reparse --source <slug> --dry-run`, then without `--dry-run`. Reparse deletes postings that no longer pass `is_relevant` (they rebuild from raw).
+- **PHP salaries come from ECB cross rates.** Any page that shows a PHP-converted salary must cite the ECB and say the rates are derived (SOURCES.md, Reference data).
 
 ## Status
-Steps 1–4 are done. **Remote OK is live end to end**: ~75 postings in Neon, and the daily `scrape.yml` is in place. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next is step 5: salary, classification and skill-tagging rules, plus a title check in the dev-role filter. See SPEC §10.
+Steps 1–5 are done. **Remote OK is live end to end**: 39 dev postings in Neon after the title-based filter, with seniority, job type, ph_eligible, PHP salary (ECB rates since 2021) and skills derived. The daily `scrape.yml` loads rates first. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next is step 6: `dedupe.py` (exact fingerprint + rapidfuzz pass). See SPEC §10.

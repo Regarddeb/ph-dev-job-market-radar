@@ -18,6 +18,12 @@ The single source of truth for which job sites the scraper may touch. `/add-sour
 | HN "Who is Hiring?" | api + html | Official HN API `https://hacker-news.firebaseio.com/v0/` (items, `user/whoishiring.json`); comment bodies parsed with BeautifulSoup | API README: "There is currently no rate limit." MIT-licensed docs; no stated usage restrictions. `news.ycombinator.com` robots.txt has `Crawl-delay: 30`, so only the API is fetched (never the HTML site). Still be polite (≥ 1 s between requests). Link to the comment `https://news.ycombinator.com/item?id=<id>`. Also the 5-year backfill source. | Allowed | 2026-11-06 | `https://github.com/HackerNews/API` |
 | We Work Remotely | rss | Programming-category RSS feeds | Verify the terms first. Link back to the listing. | Allowed (verify terms) | _not yet re-verified_ | |
 
+## Reference data (not job sources)
+
+| Source | Kind | Access | Rules | Status | Terms checked | Terms URL |
+| --- | --- | --- | --- | --- | --- | --- |
+| ECB euro foreign exchange reference rates | xml / csv | `https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist-90d.xml` daily (`scraper/fx.py`); `eurofxref-hist.zip` once for history (`--history`) | Published "for information purposes only" (that's our use: converting stated salaries for comparison). Free reuse on condition that "the ECB must be cited as the source" and changes are disclosed. Our change: PHP per unit of X is a cross rate, PHP/EUR ÷ X/EUR. So any page showing PHP-converted salaries must say "Exchange rates: ECB euro reference rates (USD→PHP etc. derived as cross rates)". robots.txt: `/stats/eurofxref/` not disallowed, `Crawl-delay: 5` (honoured; one request per run). Updated ~16:00 CET on TARGET working days. | Allowed | 2026-11-07 | `https://www.ecb.europa.eu/services/disclaimer/html/index.en.html` |
+
 ## Unclear: don't implement until resolved
 
 _None._

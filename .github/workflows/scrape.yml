@@ -36,6 +36,14 @@ jobs:
       - name: Tests (fixtures only)
         run: uv run --project scraper python -m pytest -q
 
+      # ECB reference rates (last 90 days, one request) before the sources, so new postings
+      # convert to PHP at today's rate. A failure only leaves PHP amounts NULL; the
+      # sources still run, and the job fails at the end.
+      - name: Exchange rates (ECB)
+        id: fx
+        continue-on-error: true
+        run: uv run --project scraper python -m scraper.fx
+
       # One step per source. continue-on-error keeps one broken source from blocking the
       # others; each failure is still recorded in crawl_runs and fails the job at the end.
       - name: Source - remoteok
@@ -46,7 +54,7 @@ jobs:
       # Next (build steps 7 and 10): aggregate.py, retention.py, POST /api/revalidate.
 
       - name: Fail if any source failed
-        if: steps.remoteok.outcome == 'failure'
+        if: steps.fx.outcome == 'failure' || steps.remoteok.outcome == 'failure'
         run: |
           echo "::error::One or more sources failed; see crawl_runs and the step logs."
           exit 1

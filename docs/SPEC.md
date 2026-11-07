@@ -19,6 +19,7 @@ It showcases three things: **web scraping (BeautifulSoup)**, **data processing**
 
 ```
 Allowed sources ──fetch──> GitHub Actions daily workflow (Python)
+                             0. fx.py (ECB rates -> exchange_rates)
                              1. scraper pipeline (one step per source)
                              2. aggregate.py  (daily_skill_stats, fill missed days)
                              3. retention.py  (trim old text)
@@ -98,19 +99,35 @@ daily_skill_stats(date, skill_id, active_postings, new_postings, median_salary_p
 
 ## 6. Processing rules
 
-- **Salary.** Keep `salary_raw`. Parse forms like `₱40k–60k/month`, `PHP 50,000`, `$15–20/hr`, `$30,000/yr` and `USD 90k - 130k`. Convert to monthly (hourly × 160, daily × 22, annual ÷ 12), then to PHP using `exchange_rates` for the first-seen date. NULL when absent or unparseable.
-- **Seniority** (case-insensitive, first match wins):
+Implemented in `scraper/normalize/` (`salary.py`, `classify.py`, `skills.py`) with fixture tests. `python -m scraper.reparse --source <slug>` re-applies the rules to stored `raw_postings` without fetching.
+
+- **Dev-role filter.** A posting is kept only if its **title** names a software role (`classify.is_dev_title`) and isn't a known non-dev role (sales, account manager, recruiter, accounting, civil/mechanical engineer, …). Source tags alone don't count: Remote OK's are keyword-stuffed.
+- **Salary.** Keep `salary_raw`. Parse forms like `₱40k–60k/month`, `PHP 50,000`, `$15–20/hr`, `$30,000/yr` and `USD 90k - 130k`. Convert to monthly (hourly × 160, daily × 22, weekly × 52/12, annual ÷ 12), then to PHP using `exchange_rates` for the first-seen date. NULL when absent or unparseable.
+  - The adapter's structured salary fields win over parsing `salary_raw`. No stated period means no monthly figure.
+  - The amount must sit next to the currency marker (`$100k`, `USD 90k`, `50,000 PHP`). Two separate amounts (`$10M ARR, $5k/mo`), dot-thousands (`€60.000`) and a bare year (`USD 2025`) are refused.
+  - Remote OK: a bound of exactly USD 10,000 (the salary picker's floor, used as a placeholder) is not read as annual.
+  - A bare `$` is USD. Marked dollars (`CA$`, `A$`, `S$`, `NZ$`, `HK$`) and ISO codes map to their own currency.
+  - **Exchange rates:** ECB euro reference rates (`scraper/fx.py`, daily 90-day feed; history since 2021 loaded once). `php_per_unit` for currency X = PHP/EUR ÷ X/EUR. The lookup takes the latest rate on or before the posting's first-seen UTC day, at most 7 days back (weekends, TARGET holidays). Otherwise PHP stays NULL. The conversion runs in SQL, so it always uses the stored `first_seen_at`.
+- **Seniority** (title only; case-insensitive, first match wins):
   1. `\b(lead|principal|staff)\b` → lead
   2. `\b(senior|sr\.?)\b` → senior
   3. `\bintern(ship)?\b` → intern
   4. `\b(junior|jr\.?|entry[- ]level)\b` → junior
   5. otherwise → unspecified
-- **Job type:** `part[- ]time`, `freelance|project[- ]based`, `contract(ual)?`, `full[- ]time`.
-- **Work setup:** the source's own field first, then `remote|wfh|work from home`, then `hybrid`.
-- **ph_eligible:**
-  - Positive: `philippines|PH-based|filipino|asia|APAC|worldwide|anywhere`.
+- **Job type:** `part[- ]time`, `freelance|project[- ]based`, `contract(ual)?`, `full[- ]time` (in this order, first match wins).
+  - Checked in the source field, then the title, then the description. Source tags are not used.
+  - In the description, a type counts only when it is stated about this job: a labelled field (`Type: Full-time`), an item in a `Remote · Full time · …` line, or a phrase like `this is a full-time role` / `contract-based`. Bare "contract" (smart contracts, API contracts) never counts.
+  - Full-time alongside another type in the description (`full-time or contract`) is a conflict → `unspecified`.
+- **Work setup:** the source's own field first, then the title and location: `hybrid` (checked first, so "hybrid, 2 days remote" isn't remote), then `remote|wfh|work from home`, then `on-site|in office`. Descriptions are not used.
+- **ph_eligible** (title, location and description):
+  - Strong positive: `philippines|filipino|PH-based`, anywhere.
+  - A negative that names the Philippines itself (`cannot hire in the Philippines`, `anywhere except the Philippines`, `… Philippines are not eligible`) → false, checked first.
+  - Generic positive: `asia|APAC|worldwide|anywhere` (plus `global` in the location field), in the title or location. In the description it needs hiring context (`work from anywhere`, `hiring … APAC`, `anywhere in the world`): bare "worldwide" or "Asia" there is usually marketing copy.
   - Negative: `US only`, `must (reside|be located) in <non-PH country>`, `EU timezone required`, `US work authorization`.
-  - An explicit negative beats a generic positive. Any other conflict → NULL.
+    - Also: `(authorized|eligible) to work in <non-PH country>` (but not "work in US time zones/hours") and `anywhere in <non-PH country>`.
+    - Also: a location of only the US (`US`, `Remote - US`).
+    - A title scoped to another region (`… LATAM`, `… EMEA`, `… US`) → false only when nothing positive is stated. `Engineer (US or APAC)` → NULL.
+  - An explicit negative beats a generic positive. A negative together with a strong positive is a conflict → NULL. Any other conflict → NULL.
 - **Skill tagging:** word-boundary regex aliases from `skill_aliases`, run over title + description.
   - Ambiguous names (Go, R, C, Swift, Rust, Dart, Spring) need context, e.g. `golang|\bgo (developer|engineer)\b`, or a match inside a requirements section extracted with BeautifulSoup.
   - Every alias has positive AND negative tests.
@@ -161,7 +178,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 2. Neon roles; `schema.prisma`; first migration (`prisma migrate dev`); seed sources and ~50 skills with aliases. ✅
 3. `scraper/http.py`, then Remote OK end to end via `/add-source` ✅. Remote OK replaced Remotive, which was excluded on 2026-11-06 because its robots.txt and Terms of Use conflict with its API page (see SOURCES.md, Forbidden).
 4. A bare postings table page (`/postings`), so real data is visible. ✅
-5. Salary, classification and skill-tagging rules, each with fixture tests.
+5. Salary, classification and skill-tagging rules, each with fixture tests; ECB exchange rates; title-based dev filter; `reparse` backfill. ✅
 6. Dedupe (Remote OK moved to step 3).
 7. `aggregate.py`, chart widgets, `/api/revalidate` wired to cached loaders.
 8. HN "Who is Hiring?" parser (the BeautifulSoup showcase) and We Work Remotely RSS.

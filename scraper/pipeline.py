@@ -1,4 +1,4 @@
-"""fetch -> raw -> parse -> normalize -> (tag, dedupe: steps 5-6) -> load.
+"""fetch -> raw -> parse -> normalize -> tag -> (dedupe: step 6) -> load.
 
     uv run --project scraper python -m scraper.pipeline --source remoteok --dry-run
     uv run --project scraper python -m scraper.pipeline --source remoteok
@@ -29,6 +29,9 @@ from pydantic import ValidationError
 
 from scraper.http import FetchError, HttpClient
 from scraper.models import Page, ParsedPosting, RawItem
+from scraper.normalize import classify
+from scraper.normalize.salary import parse_salary, to_monthly
+from scraper.normalize.skills import Tagger
 from scraper.normalize.text import normalize_company, normalize_title
 from scraper.sources import get_adapter
 
@@ -75,27 +78,50 @@ def process(adapter: ModuleType, raw: RawItem) -> Outcome:
     return Outcome(raw=raw, posting=posting, relevant=adapter.is_relevant(posting))
 
 
+def salary_fields(p: ParsedPosting) -> dict[str, Any]:
+    """Currency, period and monthly amounts in the posting's own currency.
+
+    The adapter's structured fields win; otherwise salary_raw is parsed. The monthly amounts
+    are converted to PHP in SQL (SQL_SALARY_PHP) at the posting's first-seen date.
+    """
+    currency, period = p.salary_currency, p.salary_period
+    lo, hi = p.salary_min, p.salary_max
+    if lo is None and hi is None and (parsed := parse_salary(p.salary_raw)):
+        currency, period, lo, hi = parsed.currency, parsed.period, parsed.minimum, parsed.maximum
+    lo, hi = (lo if lo is not None else hi), (hi if hi is not None else lo)
+    monthly_min = to_monthly(lo, period) if lo is not None else None
+    monthly_max = to_monthly(hi, period) if hi is not None else None
+    return {
+        "salary_currency": currency,
+        "salary_period": period,
+        "salary_min_monthly": monthly_min,
+        "salary_max_monthly": monthly_max,
+    }
+
+
 def posting_row(p: ParsedPosting) -> dict[str, Any]:
-    """Columns for `postings`. Derived fields (seniority, PHP salary, ph_eligible) arrive in
-    step 5; until then they keep their 'unknown' defaults: never guessed."""
+    """Columns for `postings`, including the rule-derived fields (docs/SPEC.md §6).
+
+    Unknowns stay 'unspecified' / None: never guessed.
+    """
     company_norm = normalize_company(p.company_name) if p.company_name else ""
     title_norm = normalize_title(p.title)
+    setup = classify.work_setup(p.work_setup, p.title, p.location_text)
     return {
         "external_id": p.external_id,
         "title": p.title,
         "title_normalized": title_norm,
-        "job_type": p.job_type,
-        "work_setup": p.work_setup,
+        "seniority": classify.seniority(p.title),
+        "job_type": classify.job_type(p.job_type, p.title, p.description),
+        "work_setup": setup,
+        "ph_eligible": classify.ph_eligible(p.title, p.location_text, p.description),
         "location_text": p.location_text,
         "salary_raw": p.salary_raw,
-        "salary_currency": p.salary_currency,
-        "salary_period": p.salary_period,
+        **salary_fields(p),
         "description": p.description,
         "source_url": p.source_url,
         "posted_at": p.posted_at,
-        "fingerprint": fingerprint(company_norm, title_norm, p.work_setup)
-        if company_norm
-        else None,
+        "fingerprint": fingerprint(company_norm, title_norm, setup) if company_norm else None,
     }
 
 
@@ -115,8 +141,21 @@ def coverage(stats: Stats) -> list[tuple[str, str]]:
         ("% salary with known period", pct(sum(p.salary_period is not None for p in rel))),
         ("% with company", pct(sum(p.company_name is not None for p in rel))),
         ("% with location text", pct(sum(p.location_text is not None for p in rel))),
-        ("% job_type stated by source", pct(sum(p.job_type != "unspecified" for p in rel))),
-        ("Seniority / ph_eligible / skills", "not derived yet (build step 5)"),
+        *derived_coverage(rel, pct),
+    ]
+
+
+def derived_coverage(rel: list[ParsedPosting], pct: Any) -> list[tuple[str, str]]:
+    rows = [posting_row(p) for p in rel]
+    tagger = Tagger.from_json()
+    tagged = sum(bool(tagger.tag(p.title, p.description)) for p in rel)
+    return [
+        ("% seniority known", pct(sum(r["seniority"] != "unspecified" for r in rows))),
+        ("% job_type known", pct(sum(r["job_type"] != "unspecified" for r in rows))),
+        ("% ph_eligible known", pct(sum(r["ph_eligible"] is not None for r in rows))),
+        ("  of which PH-eligible", pct(sum(r["ph_eligible"] is True for r in rows))),
+        ("% salary convertible", pct(sum(r["salary_min_monthly"] is not None for r in rows))),
+        ("% with >= 1 skill", pct(tagged)),
     ]
 
 
@@ -152,23 +191,32 @@ ON CONFLICT (normalized_name) DO UPDATE SET name = companies.name
 RETURNING id
 """
 
+# %(seen)s: true for a crawl (the posting was just seen: bump last_seen_at, mark active);
+# false for a reparse from stored raw (leave the crawl history alone). For rows a reparse
+# inserts, %(seen_at)s is the raw fetch time and %(active)s says whether that fetch was in
+# the source's latest successful crawl (an older item may have left the feed).
 SQL_POSTING_UPSERT = """
 INSERT INTO postings (
     raw_posting_id, source_id, external_id, company_id, title, title_normalized,
-    job_type, work_setup, location_text, salary_raw, salary_currency, salary_period,
-    description, source_url, posted_at, fingerprint)
+    seniority, job_type, work_setup, ph_eligible, location_text,
+    salary_raw, salary_currency, salary_period,
+    description, source_url, posted_at, fingerprint, first_seen_at, last_seen_at, is_active)
 VALUES (
     %(raw_posting_id)s, %(source_id)s, %(external_id)s, %(company_id)s, %(title)s,
-    %(title_normalized)s, %(job_type)s::job_type, %(work_setup)s::work_setup,
-    %(location_text)s, %(salary_raw)s, %(salary_currency)s, %(salary_period)s,
-    %(description)s, %(source_url)s, %(posted_at)s, %(fingerprint)s)
+    %(title_normalized)s, %(seniority)s::seniority, %(job_type)s::job_type,
+    %(work_setup)s::work_setup, %(ph_eligible)s, %(location_text)s,
+    %(salary_raw)s, %(salary_currency)s, %(salary_period)s,
+    %(description)s, %(source_url)s, %(posted_at)s, %(fingerprint)s,
+    COALESCE(%(seen_at)s, now()), COALESCE(%(seen_at)s, now()), %(active)s)
 ON CONFLICT (source_id, external_id) DO UPDATE SET
     raw_posting_id   = EXCLUDED.raw_posting_id,
     company_id       = EXCLUDED.company_id,
     title            = EXCLUDED.title,
     title_normalized = EXCLUDED.title_normalized,
+    seniority        = EXCLUDED.seniority,
     job_type         = EXCLUDED.job_type,
     work_setup       = EXCLUDED.work_setup,
+    ph_eligible      = EXCLUDED.ph_eligible,
     location_text    = EXCLUDED.location_text,
     salary_raw       = EXCLUDED.salary_raw,
     salary_currency  = EXCLUDED.salary_currency,
@@ -177,10 +225,108 @@ ON CONFLICT (source_id, external_id) DO UPDATE SET
     source_url       = EXCLUDED.source_url,
     posted_at        = COALESCE(EXCLUDED.posted_at, postings.posted_at),
     fingerprint      = EXCLUDED.fingerprint,
-    last_seen_at     = now(),
-    is_active        = true
-RETURNING (xmax = 0) AS inserted
+    last_seen_at     = CASE WHEN %(seen)s THEN now() ELSE postings.last_seen_at END,
+    is_active        = CASE WHEN %(seen)s THEN true ELSE postings.is_active END
+RETURNING id, (xmax = 0) AS inserted
 """
+
+# Monthly amounts (in the posting's currency) -> PHP, at the rate for the posting's
+# first-seen date (UTC day). The latest ECB rate on or before that day is used, looking
+# back at most 7 days (weekends, TARGET holidays); no rate -> NULL, never a guess.
+# Both amounts are set only if both fit the INT column and the > 0 CHECK; an absurd value
+# ("$900m/month") or one that rounds to 0 leaves both NULL instead of failing the row.
+SQL_SALARY_PHP = """
+UPDATE postings p SET
+    salary_min_php_monthly = CASE WHEN fx.ok THEN fx.lo::int END,
+    salary_max_php_monthly = CASE WHEN fx.ok THEN fx.hi::int END
+FROM (
+    SELECT v.id, v.lo, v.hi,
+           COALESCE(v.lo BETWEEN 1 AND 2147483647 AND v.hi BETWEEN 1 AND 2147483647
+                    AND v.lo <= v.hi, false) AS ok
+    FROM (
+        SELECT p2.id,
+               round(%(min)s::numeric * r.rate) AS lo,
+               round(%(max)s::numeric * r.rate) AS hi
+        FROM postings p2
+        CROSS JOIN LATERAL (
+            SELECT CASE WHEN %(currency)s::text = 'PHP' THEN 1::numeric ELSE (
+                SELECT er.php_per_unit FROM exchange_rates er
+                WHERE er.currency = %(currency)s::text
+                  AND er.date <= (p2.first_seen_at AT TIME ZONE 'UTC')::date
+                  AND er.date >  (p2.first_seen_at AT TIME ZONE 'UTC')::date - 7
+                ORDER BY er.date DESC LIMIT 1) END AS rate
+        ) r
+        WHERE p2.id = %(id)s
+    ) v
+) fx
+WHERE p.id = fx.id
+"""
+
+SQL_SKILLS_CLEAR = "DELETE FROM posting_skills WHERE posting_id = %s"
+SQL_SKILLS_INSERT = """
+INSERT INTO posting_skills (posting_id, skill_id)
+SELECT %s, id FROM skills WHERE name = ANY(%s)
+ON CONFLICT DO NOTHING
+"""
+SQL_ALIASES = """
+SELECT s.name, a.pattern, a.requirements_only
+FROM skill_aliases a JOIN skills s ON s.id = a.skill_id
+ORDER BY s.name, a.id
+"""
+
+
+class PostingWriter:
+    """Writes one parsed posting with its derived fields, PHP salary and skills.
+
+    Shared by the crawl (Loader) and by reparse (scraper/reparse.py). The caller owns the
+    transaction.
+    """
+
+    def __init__(self, conn: Any, source_id: int) -> None:
+        self.conn = conn
+        self.source_id = source_id
+        self.tagger = Tagger.from_rows(conn.execute(SQL_ALIASES).fetchall())
+
+    def write(
+        self,
+        p: ParsedPosting,
+        raw_id: int,
+        *,
+        seen: bool,
+        seen_at: Any = None,
+        active_if_new: bool = True,
+    ) -> tuple[int, bool]:
+        """Upsert the posting. Returns (posting id, inserted?).
+
+        active_if_new only applies when a reparse inserts a row; a crawl always passes True.
+        """
+        company_id = None
+        if p.company_name and (norm := normalize_company(p.company_name)):
+            company_id = self.conn.execute(SQL_COMPANY_UPSERT, (p.company_name, norm)).fetchone()[0]
+        row = posting_row(p)
+        params = row | {
+            "raw_posting_id": raw_id,
+            "source_id": self.source_id,
+            "company_id": company_id,
+            "seen": seen,
+            "seen_at": seen_at,
+            "active": True if seen else active_if_new,
+        }
+        posting_id, inserted = self.conn.execute(SQL_POSTING_UPSERT, params).fetchone()
+        self.conn.execute(
+            SQL_SALARY_PHP,
+            {
+                "id": posting_id,
+                "currency": row["salary_currency"],
+                "min": row["salary_min_monthly"],
+                "max": row["salary_max_monthly"],
+            },
+        )
+        skills = sorted(self.tagger.tag(p.title, p.description))
+        self.conn.execute(SQL_SKILLS_CLEAR, (posting_id,))
+        if skills:
+            self.conn.execute(SQL_SKILLS_INSERT, (posting_id, skills))
+        return posting_id, bool(inserted)
 
 
 class Loader:
@@ -199,6 +345,7 @@ class Loader:
         self.source_id, active = row
         if not active:
             raise SystemExit(f"source {slug!r} has is_active=false in the seed; refusing to run")
+        self.writer = PostingWriter(self.conn, self.source_id)
         self.run_id = self.conn.execute(
             "INSERT INTO crawl_runs (source_id) VALUES (%s) RETURNING id", (self.source_id,)
         ).fetchone()[0]
@@ -231,18 +378,8 @@ class Loader:
             )
             if not outcome.relevant or outcome.posting is None:
                 return False
-            p = outcome.posting
-            company_id = None
-            if p.company_name and (norm := normalize_company(p.company_name)):
-                company_id = self.conn.execute(
-                    SQL_COMPANY_UPSERT, (p.company_name, norm)
-                ).fetchone()[0]
-            row = posting_row(p) | {
-                "raw_posting_id": raw_id,
-                "source_id": self.source_id,
-                "company_id": company_id,
-            }
-            return bool(self.conn.execute(SQL_POSTING_UPSERT, row).fetchone()[0])
+            _, inserted = self.writer.write(outcome.posting, raw_id, seen=True)
+            return inserted
 
     def finish(self, stats: Stats, error: str | None = None) -> None:
         self.conn.rollback()  # discard anything half-done before recording the outcome

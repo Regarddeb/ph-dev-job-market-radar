@@ -92,10 +92,15 @@ def test_inline_html_stays_on_one_line(parsed: dict[str, ParsedPosting]) -> None
 
 def test_relevance_keeps_developer_roles_only(parsed: dict[str, ParsedPosting]) -> None:
     relevant = {i for i, p in parsed.items() if remoteok.is_relevant(p)}
-    assert len(relevant) == 73
+    assert len(relevant) == 36
     assert "1137688" in relevant  # Senior Vue Developer
     for non_dev in ("1137479", "1137677", "1137680"):  # dean, M&A intern, travel booking
         assert non_dev not in relevant
+    # Dev-tagged on Remote OK, but not developer roles: the title check drops them.
+    titles = {parsed[i].title for i in relevant}
+    for title in ("Sales Operations Analyst", "Tax Manager Private Client",
+                  "Senior Property Manager ENG", "Scientific Account Executive"):  # fmt: skip
+        assert title not in titles
 
 
 def test_contradictory_salary_is_dropped() -> None:
@@ -107,3 +112,25 @@ def test_contradictory_salary_is_dropped() -> None:
         remoteok.RawItem(external_id="1", url="https://remoteOK.com/remote-jobs/1", payload=payload)
     )
     assert p.salary_raw is None and p.salary_min is None
+
+
+@pytest.mark.parametrize(
+    ("lo", "hi", "period"),
+    [
+        (10000, 10000, None),  # the picker's floor: a placeholder, not USD 833/month
+        (10000, 120000, None),
+        (10001, 30000, "year"),
+        (60000, 110000, "year"),
+        (30, 36, None),  # clearly not annual
+    ],
+)
+def test_annual_floor_is_strict(lo: int, hi: int, period: str | None) -> None:
+    payload = json.dumps(
+        {"id": 1, "position": "Dev", "url": "https://remoteOK.com/remote-jobs/1",
+         "salary_min": lo, "salary_max": hi}
+    )  # fmt: skip
+    p = remoteok.parse(
+        remoteok.RawItem(external_id="1", url="https://remoteOK.com/remote-jobs/1", payload=payload)
+    )
+    assert p.salary_period == period
+    assert p.salary_currency == "USD"

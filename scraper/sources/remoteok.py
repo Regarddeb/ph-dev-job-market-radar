@@ -8,11 +8,14 @@
 - Text fields arrive with HTML entities and UTF-8-as-Latin-1 mojibake (in the source data
   itself); clean_text() repairs both.
 - Salary: salary_min / salary_max are Remote OK's structured fields, in USD. The period is
-  not stated per job. Values >= ANNUAL_FLOOR_USD are treated as annual (Remote OK's
+  not stated per job. Values above ANNUAL_FLOOR_USD are treated as annual (Remote OK's
   convention); smaller values (e.g. 30-36, clearly hourly or monthly) keep amount and
   currency but salary_period stays NULL, so no PHP/month figure is derived. 0 = not stated.
-- Relevance: only developer roles become postings (is_relevant); every item is still
-  stored raw.
+  Exactly 10,000 is the bottom of Remote OK's salary picker and shows up as a placeholder
+  ("10,000 - 120,000", "10,000 - 10,000"), so a bound at the floor also leaves the period
+  NULL rather than reading it as USD 833/month.
+- Relevance: only developer roles become postings (is_relevant, decided by the title);
+  every item is still stored raw.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from typing import Any
 
 from scraper.http import HttpClient
 from scraper.models import Page, ParsedPosting, RawItem
+from scraper.normalize.classify import is_dev_title
 from scraper.normalize.text import clean_text, html_to_text
 
 SLUG = "remoteok"
@@ -34,41 +38,6 @@ API_URL = "https://remoteok.com/api"
 FIXTURE_EXT = "json"
 
 ANNUAL_FLOOR_USD = 10_000
-
-# Remote OK tags that mark a software/developer role (checked against the 2026-11-06
-# fixture: every job without one of these was support, sales, travel, exec or teaching).
-DEV_TAGS = frozenset(
-    {
-        "dev",
-        "developer",
-        "engineer",
-        "engineering",
-        "software",
-        "backend",
-        "back end",
-        "frontend",
-        "front end",
-        "full stack",
-        "fullstack",
-        "devops",
-        "web dev",
-        "mobile",
-        "ios",
-        "android",
-        "data engineer",
-        "sre",
-        "qa",
-        "python",
-        "javascript",
-        "typescript",
-        "java",
-        "golang",
-        "react",
-        "php",
-        "ruby",
-        "rust",
-    }
-)
 
 
 def fetch_pages(client: HttpClient) -> Iterator[Page]:
@@ -123,7 +92,7 @@ def _salary(job: dict[str, Any]) -> dict[str, Any]:
         return {}  # contradictory: store nothing rather than guess which is right
     bounds = [v for v in dict.fromkeys((lo, hi)) if v is not None]  # 75k-75k -> 75k
     shown = " - ".join(f"{v:,.0f}" for v in bounds)
-    annual = all(v >= ANNUAL_FLOOR_USD for v in (lo, hi) if v is not None)
+    annual = all(v > ANNUAL_FLOOR_USD for v in (lo, hi) if v is not None)
     return {
         "salary_raw": f"USD {shown}/year" if annual else f"USD {shown} (period not stated)",
         "salary_currency": "USD",
@@ -151,5 +120,9 @@ def parse(raw: RawItem) -> ParsedPosting:
 
 
 def is_relevant(posting: ParsedPosting) -> bool:
-    """Developer roles only; Remote OK's feed mixes in support, sales, travel, etc."""
-    return any(t.lower() in DEV_TAGS for t in posting.tags)
+    """Developer roles only; Remote OK's feed mixes in support, sales, travel, etc.
+
+    Decided by the title (normalize.classify.is_dev_title). Tags alone aren't trusted: they
+    are keyword-stuffed ("Tax Manager" tagged dev/php, "Account Manager" tagged golang).
+    """
+    return is_dev_title(posting.title)
