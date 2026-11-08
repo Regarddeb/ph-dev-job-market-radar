@@ -173,6 +173,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
   - Skills compares rolling windows, the last 30 days vs the 30 before, rather than calendar months. Its trend chart shows up to 4 of the top 8 skills, each skill keeping its colour while selected, with end labels and a table view.
   - Salaries covers postings first seen in the last 90 days. Each posting counts at its (min + max)/2 monthly PHP midpoint. Only skills with n ≥ 3 are charted, and the page cites the ECB for exchange rates.
   - Chart colours are the validated dataviz categorical slots (`--chart-1..5` in `globals.css`).
+  - **Matches** (`/matches`) uses `dashboard/config/my-skills.ts`: `MY_SKILLS` (names checked against `skills.json` by a test) and `MY_JOB_TYPES`, which defaults to part-time, freelance **and contract**, since remote contract work is effectively freelance; remove `contract` to follow this table strictly. Active, canonical, `ph_eligible = true` postings with at least one skill, newest first. A second "Worth a look" list holds PH-eligible skill matches whose job type isn't stated. Full-time roles are excluded.
 - Every posting row shows a "via <Source>" link to `source_url`.
 - Data loaders use `'use cache'` + `cacheTag` with the tags `postings`, `skill-stats` and `ops`.
 - `POST /api/revalidate` (Bearer `REVALIDATE_SECRET`) calls `revalidateTag(tag, "max")` for each tag.
