@@ -15,10 +15,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import inspect
+import json
 import logging
 import os
 import sys
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
@@ -58,6 +60,8 @@ class Stats:
     errors: list[tuple[str, str]] = field(default_factory=list)
     relevant: list[ParsedPosting] = field(default_factory=list)
     new_postings: int = 0
+    # Incremental sources (HN): listed items not re-fetched because they're stored and final.
+    skipped_known: int = 0
 
 
 def content_hash(payload: str) -> str:
@@ -163,8 +167,16 @@ def derived_coverage(rel: list[ParsedPosting], pct: Any) -> list[tuple[str, str]
 
 
 def pages_from_fixture(adapter: ModuleType, path: Path) -> Iterator[Page]:
+    """A fixture is one response body, or for .jsonl one captured response per line
+    ({"url", "text"}): sources like HN need many requests per crawl."""
     with path.open(encoding="utf-8", newline="") as fh:
-        yield Page(url=f"fixture:{path.name}", text=fh.read())
+        if path.suffix == ".jsonl":
+            for line in fh:
+                if line.strip():
+                    rec = json.loads(line)
+                    yield Page(url=rec["url"], text=rec["text"])
+        else:
+            yield Page(url=f"fixture:{path.name}", text=fh.read())
 
 
 # --------------------------------------------------------------------------- database
@@ -260,6 +272,17 @@ FROM (
     ) v
 ) fx
 WHERE p.id = fx.id
+"""
+
+SQL_KNOWN_RAW = """
+SELECT external_id, payload, fetched_at FROM raw_postings
+WHERE source_id = %s AND external_id = ANY(%s)
+"""
+
+# Listed but not re-fetched: still listed, so still seen and active.
+SQL_MARK_LISTED = """
+UPDATE postings SET last_seen_at = now(), is_active = true
+WHERE source_id = %s AND external_id = ANY(%s)
 """
 
 SQL_DEACTIVATE_UNSEEN = """
@@ -387,6 +410,28 @@ class Loader:
             _, inserted = self.writer.write(outcome.posting, raw_id, seen=True)
             return inserted
 
+    def listing_callback(
+        self, adapter: ModuleType, stats: Stats
+    ) -> Callable[[list[str]], set[str]]:
+        """For incremental adapters: given every id the source currently lists, return the
+        ids to skip (stored, and final per adapter.is_final), and mark those as seen."""
+
+        def on_listing(ids: list[str]) -> set[str]:
+            is_final = getattr(adapter, "is_final", None)
+            with self.conn.transaction():
+                rows = self.conn.execute(SQL_KNOWN_RAW, (self.source_id, ids)).fetchall()
+                skip = {
+                    ext_id
+                    for ext_id, payload, fetched_at in rows
+                    if is_final is None or is_final(payload, fetched_at)
+                }
+                if skip:
+                    self.conn.execute(SQL_MARK_LISTED, (self.source_id, sorted(skip)))
+            stats.skipped_known = len(skip)
+            return skip
+
+        return on_listing
+
     def finish(self, stats: Stats, error: str | None = None) -> None:
         self.conn.rollback()  # discard anything half-done before recording the outcome
         with self.conn.transaction():
@@ -409,9 +454,9 @@ class Loader:
                     "UPDATE sources SET last_crawled_at = now() WHERE id = %s", (self.source_id,)
                 )
                 # Active = listed in the source's latest successful crawl. Only after a
-                # complete, error-free run, and only if it found postings (an empty feed is
-                # more likely an outage than every job closing at once).
-                if stats.relevant:
+                # complete, error-free run, and only if it found or re-listed postings (an
+                # empty feed is more likely an outage than every job closing at once).
+                if stats.relevant or stats.skipped_known:
                     self.conn.execute(SQL_DEACTIVATE_UNSEEN, (self.source_id, self.run_id))
         self.conn.close()
 
@@ -423,8 +468,9 @@ def run(
     adapter: ModuleType,
     pages: Iterable[Page],
     loader: Loader | None,
+    stats: Stats | None = None,
 ) -> Stats:
-    stats = Stats()
+    stats = stats if stats is not None else Stats()
     for page in pages:
         stats.pages += 1
         for raw in adapter.split(page):
@@ -445,6 +491,8 @@ def print_report(stats: Stats, *, dry_run: bool) -> None:
     rows = coverage(stats)
     if not dry_run:
         rows.insert(4, ("New postings inserted", str(stats.new_postings)))
+        if stats.skipped_known:
+            rows.insert(1, ("Listed, already stored (skipped)", str(stats.skipped_known)))
     width = max(len(k) for k, _ in rows)
     print(("DRY RUN: nothing written\n" if dry_run else "") + "-" * (width + 24))
     for k, v in rows:
@@ -480,8 +528,16 @@ def main(argv: list[str] | None = None) -> int:
             pages: Iterable[Page] = pages_from_fixture(adapter, args.fixture)
         else:
             client = HttpClient()
-            pages = adapter.fetch_pages(client)
-        stats = run(adapter, pages, loader)
+            if (
+                loader is not None
+                and "on_listing" in inspect.signature(adapter.fetch_pages).parameters
+            ):
+                pages = adapter.fetch_pages(
+                    client, on_listing=loader.listing_callback(adapter, stats)
+                )
+            else:
+                pages = adapter.fetch_pages(client)
+        run(adapter, pages, loader, stats)
     except FetchError as exc:
         error = str(exc)
         log.error("fetch failed: %s", exc)

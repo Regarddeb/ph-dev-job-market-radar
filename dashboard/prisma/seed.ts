@@ -57,7 +57,7 @@ const SOURCES: SourceSeed[] = [
     kind: SourceKind.api,
     attributionText: "via Hacker News",
     crawlIntervalMinutes: 1440,
-    isActive: false,
+    isActive: true,
     termsUrl: "https://github.com/HackerNews/API",
   },
 ];

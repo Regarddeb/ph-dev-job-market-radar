@@ -16,7 +16,6 @@ The single source of truth for which job sites the scraper may touch. `/add-sour
 | --- | --- | --- | --- | --- | --- | --- |
 | Remote OK | api | `https://remoteok.com/api` (optional `?tags=`) | Returns only the latest ~100. The first array element is a legal notice; skip it. API ToS (in that element): "Please link back (with follow, and without nofollow!) to the URL on Remote OK and mention Remote OK as a source … If you do not we'll have to suspend API access." Don't use the logo (registered trademark); do use the name "Remote OK". robots.txt: `User-agent: *` → `Allow: /`, `Content-Signal: search=yes,ai-train=no` (named AI crawlers are blocked; we're not an AI crawler, and the app makes no AI use). Poll once daily. | Allowed | 2026-11-06 | `https://remoteok.com/api` (legal notice) |
 | HN "Who is Hiring?" | api + html | Official HN API `https://hacker-news.firebaseio.com/v0/` (items, `user/whoishiring.json`); comment bodies parsed with BeautifulSoup | API README: "There is currently no rate limit." MIT-licensed docs; no stated usage restrictions. `news.ycombinator.com` robots.txt has `Crawl-delay: 30`, so only the API is fetched (never the HTML site). Still be polite (≥ 1 s between requests). Link to the comment `https://news.ycombinator.com/item?id=<id>`. Also the 5-year backfill source. | Allowed | 2026-11-06 | `https://github.com/HackerNews/API` |
-| We Work Remotely | rss | Programming-category RSS feeds | Verify the terms first. Link back to the listing. | Allowed (verify terms) | _not yet re-verified_ | |
 
 ## Reference data (not job sources)
 
@@ -26,7 +25,9 @@ The single source of truth for which job sites the scraper may touch. `/add-sour
 
 ## Unclear: don't implement until resolved
 
-_None._
+| Source | Kind | Access | Rules | Status | Terms checked | Terms URL |
+| --- | --- | --- | --- | --- | --- | --- |
+| We Work Remotely | rss | `https://weworkremotely.com/categories/remote-back-end-programming-jobs.rss` (confirmed); reportedly also `remote-full-stack-programming-jobs.rss`, `remote-front-end-programming-jobs.rss`, `remote-devops-sysadmin-jobs.rss` | The feeds are public RSS 2.0, with no auth and `ttl` 60. Items carry title ("Company: Role"), region, country, state, skills, category, type, description (HTML), pubDate, expires_at, guid and link; there is no salary field. Search summaries of WWR's API Terms & Guidelines say "scraping, copying, saving, or storing our data is strictly prohibited" and that only API-exposed data may be used, which conflicts with raw-first storage. The terms pages return 403 to automated fetches, so this wording is **not verified verbatim**. robots.txt: `User-agent: *` default allow; `/categories/` not disallowed. **To resolve:** the owner reads `/terms-and-conditions` (updated 2026-10-23) and `/api-terms-and-guidelines` in a browser, and/or gets written permission from WWR. Until then, don't implement. | Unclear | 2026-11-08 (`source-researcher`) | `https://weworkremotely.com/api-terms-and-guidelines` |
 
 ## Candidates (vet with `source-researcher` before use)
 

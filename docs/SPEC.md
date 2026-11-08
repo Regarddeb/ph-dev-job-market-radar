@@ -80,7 +80,7 @@ daily_skill_stats(date, skill_id, active_postings, new_postings, median_salary_p
 ```
 
 **Additions in the implemented schema** (marked `(+)` in `schema.prisma`):
-- `sources.slug` (unique): the `--source <slug>` key and the Python module name (`remoteok`, `weworkremotely`, `hn_hiring`).
+- `sources.slug` (unique): the `--source <slug>` key and the Python module name (`remoteok`, `hn_hiring`; `weworkremotely` is seeded inactive and is Unclear).
 - `postings.external_id` + `UNIQUE(source_id, external_id)`: the posting upsert key.
 - `skill_aliases.requirements_only`: the alias only matches inside an extracted requirements section.
 - Enums are Postgres enum types: `source_kind`, `crawl_status`, `seniority`, `job_type`, `work_setup`, `skill_category`.
@@ -180,7 +180,14 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 ## 9. Workflows
 
 - `scrape.yml` runs daily at `7 17 * * *`, plus manual dispatch. One step per source (`continue-on-error`), then `aggregate.py` → `retention.py` → `curl` POST to `/api/revalidate`.
-- `backfill-hn.yml` is manual. It loads 5 years of HN "Who is Hiring?" threads.
+- `backfill-hn.yml` is manual. It loads 5 years of HN "Who is Hiring?" threads. Design (decided in step 8, built in step 9):
+  - **Discovery.** `user/whoishiring.json` → `submitted` lists every thread the account has posted, three a month. Scan titles for "Ask HN: Who is hiring? (Month YYYY)" back 60 months (~180 story requests).
+  - **Fetch.** For each thread, fetch its top-level comments through the same adapter code (`split`/`parse`/`is_relevant`). Past threads are final (`is_final`), so ids already in `raw_postings` are skipped and a run resumes where the last one stopped.
+  - **Volume.** ~60 threads × ~450 comments ≈ 27k requests ≈ 7.5 h at 1 s. GitHub jobs stop at 6 h, so `--max-requests` (~15k) caps each run and the backfill takes 2–3 manual runs.
+  - **History, not "seen now".** A backfilled posting takes `first_seen_at` = the comment's time and `last_seen_at` = the thread's end (the next thread's time). It is inserted with `is_active = false`, and the backfill writes no `crawl_runs` or "seen" bumps. PHP salaries convert at the first-seen date; ECB history goes back to 2021.
+  - **Size.** Raw payloads and descriptions older than 90 days are trimmed by `retention.py`, so 5 years stays around the 0.3 GB estimate in §7. Run `aggregate.py --full` afterwards.
+  - **Monthly reposts.** Employers repost each month. Those land more than 30 days apart, outside dedupe's window, so each month counts as a separate posting (a monthly demand signal).
+- **HN in the daily run** (`scrape.yml`, step 8): only the current thread, incrementally. Stored final comments are skipped and marked as still listed. Deleted or dead comments are never stored, so they're re-checked each run (~40 requests).
 - `migrate.yml` runs on push to `main` when `dashboard/prisma/**` changes: `prisma migrate deploy` using `MIGRATE_DATABASE_URL`.
 
 ## 10. Build order
@@ -192,7 +199,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 5. Salary, classification and skill-tagging rules, each with fixture tests; ECB exchange rates; title-based dev filter; `reparse` backfill. ✅
 6. Dedupe (`scraper/dedupe.py`, daily step after the sources). ✅
 7. `aggregate.py`, chart widgets, `/api/revalidate` wired to cached loaders. ✅ (`scrape.yml` calls it once the `DASHBOARD_URL` secret exists.)
-8. HN "Who is Hiring?" parser (the BeautifulSoup showcase) and We Work Remotely RSS.
+8. HN "Who is Hiring?" parser (the BeautifulSoup showcase) and We Work Remotely RSS. ✅ HN is live (daily, incremental), and the 5-year backfill is designed (§9). We Work Remotely moved to **Unclear** (2026-11-08): its terms reportedly forbid storing data, and the owner must confirm before any adapter.
 9. Workflows: `scrape.yml`, `migrate.yml`, then one run of `backfill-hn.yml`.
 10. `retention.py` and the Ops page DB-size warning.
 11. Deploy the dashboard to Vercel; README with architecture, fixture-based tests, attribution, screenshots.

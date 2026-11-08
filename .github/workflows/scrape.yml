@@ -17,7 +17,7 @@ concurrency:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30 # HN: ~250 requests at 1 s on a thread's first day
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }} # jobradar_rw role (no DDL)
       SCRAPER_USER_AGENT: ${{ secrets.SCRAPER_USER_AGENT }}
@@ -52,6 +52,13 @@ jobs:
         continue-on-error: true
         run: uv run --project scraper python -m scraper.pipeline --source remoteok
 
+      # Official HN API only. Incremental: comments already stored (past the 2 h edit
+      # window) are skipped but still count as listed.
+      - name: Source - hn_hiring
+        id: hn_hiring
+        continue-on-error: true
+        run: uv run --project scraper python -m scraper.pipeline --source hn_hiring
+
       # Across all sources, after every source has loaded. Only adds duplicates; idempotent.
       - name: Dedupe
         id: dedupe
@@ -82,6 +89,7 @@ jobs:
       - name: Fail if any step failed
         if: >-
           steps.fx.outcome == 'failure' || steps.remoteok.outcome == 'failure' ||
+          steps.hn_hiring.outcome == 'failure' ||
           steps.dedupe.outcome == 'failure' || steps.aggregate.outcome == 'failure' ||
           steps.revalidate.outcome == 'failure'
         run: |

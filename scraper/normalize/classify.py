@@ -41,7 +41,7 @@ _NON_DEV_TITLE = re.compile(
     r"talent|marketing|customer\s+(?:success|support)|support\s+specialist|"
     r"accountant|accounting|tax|property|legal|paralegal|"
     r"(?:civil|mechanical|electrical|chemical|structural|process|manufacturing|hvac|"
-    r"field\s+service|biomedical|sound|audio|mixing)\s+engineer"
+    r"field\s+service|biomedical|sound|audio|mixing|mechatronics|hardware)\s+engineer"
     r")\b",
     _I,
 )
