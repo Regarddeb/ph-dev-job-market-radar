@@ -1,8 +1,9 @@
 name: backfill-hn
 
-# Manual: load past HN "Who is Hiring?" threads (docs/SPEC.md §9). ~27k requests at 1 s
-# for 60 months, so one run is capped below GitHub's 6 h job limit and the backfill takes
-# 2-3 runs. Resumable: comments already stored are skipped, so just run it again.
+# Manual: load past HN "Who is Hiring?" threads (docs/SPEC.md §9). ~27k comments for 60
+# months. Each costs ~2.5 s from a GitHub runner (1 s polite API spacing + round-trips to
+# Neon in Singapore), so a run is capped at 6,000 requests (~4.2 h, under the 6 h job limit)
+# and the full backfill takes ~5 runs. Resumable: stored comments are skipped; run it again.
 on:
   workflow_dispatch:
     inputs:
@@ -11,8 +12,8 @@ on:
         default: "60"
         required: true
       max_requests:
-        description: "Stop after this many HTTP requests (~1 s each)"
-        default: "15000"
+        description: "Stop after this many HTTP requests (~2.5 s each incl. DB writes)"
+        default: "6000"
         required: true
 
 permissions:
