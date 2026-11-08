@@ -96,7 +96,7 @@ uv run --no-project python .claude/hooks/test_hooks.py
 - **PHP salaries come from ECB cross rates.** Any page that shows a PHP-converted salary must cite the ECB and say the rates are derived (SOURCES.md, Reference data).
 
 ## Status
-Steps 1–10 are done. The daily run is fx → remoteok → hn_hiring → dedupe → aggregate → retention → revalidate; revalidate is skipped until `DASHBOARD_URL` exists. Overview, Skills and Salaries show real charts, Ops shows crawl health and DB size, and Matches lists PH-eligible part-time/freelance/contract postings for the owner's skills (`dashboard/config/my-skills.ts`, edit to taste).
+Steps 1–10 are done. The daily run is fx → remoteok → hn_hiring → dedupe → aggregate → retention → revalidate; revalidate is skipped until `DASHBOARD_URL` exists. Overview, Skills and Salaries show real charts, Ops shows crawl health and DB size, and PH-friendly (`/ph-friendly`) lists roles open to PH-based applicants, which visitors filter by job type and skills. The whole site is public and informational, with no per-person pages.
 - **Two live sources:** Remote OK (39 dev postings) and **HN "Who is Hiring?"** (156 from the November 2026 thread, official API, incremental). Both get seniority, job type, ph_eligible, PHP salary (ECB rates since 2021) and skills derived.
 - **We Work Remotely is Unclear** (2026-11-08): don't build it until the owner confirms its terms.
 - **The HN 5-year backfill is built** (`scraper/backfill_hn.py`, `backfill-hn.yml`, resumable, ~5 manual runs of 6,000 requests, ~4.2 h each). It was tested with 60 requests into October 2026: 44 inactive postings with their historical dates.

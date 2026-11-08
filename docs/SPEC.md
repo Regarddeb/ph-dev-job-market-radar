@@ -164,7 +164,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 | Overview | `/` | Stat cards (active postings, new this week, % with salary, % remote and PH-eligible); job type and work setup donuts |
 | Skills | `/skills` | Top skills this month vs last (bar, % change); weekly trend line for selected skills |
 | Salaries | `/salaries` | Median and range per skill, always with sample size (n) |
-| Matches for me | `/matches` | Public page. Postings matching the owner's skill set, part-time/freelance and PH-eligible, newest first. The skill set is a committed config file (`dashboard/config/my-skills.ts`), not stored in the DB, so the dashboard stays read-only |
+| PH-friendly roles | `/ph-friendly` | Active postings that accept PH-based applicants (`ph_eligible = true`), newest first. Visitors filter by job type (default: part-time, freelance, contract, not stated; full-time off) and by skills (any of), in the browser. Replaced "Matches for me" on 2026-11-08: the whole site is a public, informational dashboard, so no page is built around one person's skill set |
 | Ops | `/ops` | `crawl_runs` status/errors per source; last successful run per source (flag > 48 h); DB size (warn > 800 MB) |
 
 - As built (step 7):
@@ -173,7 +173,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
   - Skills compares rolling windows, the last 30 days vs the 30 before, rather than calendar months. Its trend chart shows up to 4 of the top 8 skills, each skill keeping its colour while selected, with end labels and a table view.
   - Salaries covers postings first seen in the last 90 days. Each posting counts at its (min + max)/2 monthly PHP midpoint. Only skills with n ≥ 3 are charted, and the page cites the ECB for exchange rates.
   - Chart colours are the validated dataviz categorical slots (`--chart-1..5` in `globals.css`).
-  - **Matches** (`/matches`) uses `dashboard/config/my-skills.ts`: `MY_SKILLS` (names checked against `skills.json` by a test) and `MY_JOB_TYPES`, which defaults to part-time, freelance **and contract**, since remote contract work is effectively freelance; remove `contract` to follow this table strictly. Active, canonical, `ph_eligible = true` postings with at least one skill, newest first. A second "Worth a look" list holds PH-eligible skill matches whose job type isn't stated. Full-time roles are excluded.
+  - **PH-friendly roles** (`/ph-friendly`) replaces "Matches for me". The site is public and informational, so visitors pick skills and job types themselves. Filtering runs client-side (`lib/ph-filter.ts`), so the page stays cached (tag `postings`).
 - Every posting row shows a "via <Source>" link to `source_url`.
 - Data loaders use `'use cache'` + `cacheTag` with the tags `postings`, `skill-stats` and `ops`.
 - `POST /api/revalidate` (Bearer `REVALIDATE_SECRET`) calls `revalidateTag(tag, "max")` for each tag.
