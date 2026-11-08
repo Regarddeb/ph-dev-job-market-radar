@@ -201,5 +201,5 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 7. `aggregate.py`, chart widgets, `/api/revalidate` wired to cached loaders. ✅ (`scrape.yml` calls it once the `DASHBOARD_URL` secret exists.)
 8. HN "Who is Hiring?" parser (the BeautifulSoup showcase) and We Work Remotely RSS. ✅ HN is live (daily, incremental), and the 5-year backfill is designed (§9). We Work Remotely moved to **Unclear** (2026-11-08): its terms reportedly forbid storing data, and the owner must confirm before any adapter.
 9. Workflows: `scrape.yml`, `migrate.yml`, then one run of `backfill-hn.yml`. ✅ All three workflows exist. `migrate.yml` also re-runs the idempotent seed. The backfill command was verified locally on October 2026; the full 60-month backfill runs via `backfill-hn.yml` after push.
-10. `retention.py` and the Ops page DB-size warning.
+10. `retention.py` and the Ops page DB-size warning. ✅ Retention runs daily after aggregate. The Ops page (`/ops`, tag `ops`, hourly cache) shows DB size against 1 GB with the 800 MB line, per-source health (stale after 48 h), and the last 20 crawl runs.
 11. Deploy the dashboard to Vercel; README with architecture, fixture-based tests, attribution, screenshots.

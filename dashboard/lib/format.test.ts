@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { change, enumLabel, percent, phpCompact, phpFull } from "@/lib/format";
+import {
+  bytes,
+  change,
+  enumLabel,
+  manilaDateTime,
+  percent,
+  phpCompact,
+  phpFull,
+} from "@/lib/format";
 import { toWeeklySeries } from "@/lib/queries/skills-series";
 
 describe("phpCompact / phpFull", () => {
@@ -53,5 +61,24 @@ describe("toWeeklySeries", () => {
       { week: "2026-10-26", Python: 0, Go: 1 },
       { week: "2026-11-02", Python: 4, Go: 0 },
     ]);
+  });
+});
+
+describe("bytes", () => {
+  it.each([
+    [512, "512 B"],
+    [14_909_440, "14 MB"],
+    [1_433_600, "1.4 MB"],
+    [800 * 1024 ** 2, "800 MB"],
+    [1024 ** 3, "1.0 GB"],
+  ])("%d -> %s", (value, text) => {
+    expect(bytes(value)).toBe(text);
+  });
+});
+
+describe("manilaDateTime", () => {
+  it("shows Manila wall-clock time", () => {
+    // 17:07 UTC is 01:07 the next day in Manila (the daily scrape).
+    expect(manilaDateTime(new Date("2026-11-07T17:07:00Z"))).toMatch(/^Nov 8, 1:07\s?AM$/i);
   });
 });

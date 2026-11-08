@@ -32,3 +32,28 @@ export function enumLabel(value: string): string {
   const text = value.replaceAll("_", " ");
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
+
+const MANILA_DATE_TIME = new Intl.DateTimeFormat("en-PH", {
+  timeZone: "Asia/Manila",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** "Nov 8, 1:07 PM" in Manila time. */
+export function manilaDateTime(date: Date): string {
+  return MANILA_DATE_TIME.format(date);
+}
+
+/** 14.9 MB, 1.2 GB (binary units, as Postgres reports sizes). */
+export function bytes(value: number): string {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let v = value;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}

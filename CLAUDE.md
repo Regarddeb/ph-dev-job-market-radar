@@ -56,6 +56,7 @@ uv run --project scraper python -m scraper.fx [--history|--fixture <f>|--capture
 uv run --project scraper python -m scraper.dedupe [--dry-run] [--recompute]     # mark duplicates (all sources)
 uv run --project scraper python -m scraper.aggregate [--full|--days N] [--dry-run]  # daily_skill_stats (Manila days)
 uv run --project scraper python -m scraper.backfill_hn [--months 60] [--max-requests N] [--dry-run]  # past HN threads (resumable)
+uv run --project scraper python -m scraper.retention [--dry-run]                  # trim per SPEC §7
 
 # dashboard (cd dashboard)
 pnpm install                 # also runs prisma generate
@@ -95,8 +96,8 @@ uv run --no-project python .claude/hooks/test_hooks.py
 - **PHP salaries come from ECB cross rates.** Any page that shows a PHP-converted salary must cite the ECB and say the rates are derived (SOURCES.md, Reference data).
 
 ## Status
-Steps 1–8 are done. The daily run is fx → remoteok → hn_hiring → dedupe → aggregate → revalidate; revalidate is skipped until `DASHBOARD_URL` exists. Overview, Skills and Salaries show real charts.
+Steps 1–10 are done. The daily run is fx → remoteok → hn_hiring → dedupe → aggregate → retention → revalidate; revalidate is skipped until `DASHBOARD_URL` exists. Overview, Skills and Salaries show real charts, and Ops shows crawl health and DB size.
 - **Two live sources:** Remote OK (39 dev postings) and **HN "Who is Hiring?"** (156 from the November 2026 thread, official API, incremental). Both get seniority, job type, ph_eligible, PHP salary (ECB rates since 2021) and skills derived.
 - **We Work Remotely is Unclear** (2026-11-08): don't build it until the owner confirms its terms.
 - **The HN 5-year backfill is built** (`scraper/backfill_hn.py`, `backfill-hn.yml`, resumable, about 2–3 manual runs). It was tested with 60 requests into October 2026: 44 inactive postings with their historical dates.
-- **`migrate.yml`** runs `prisma migrate deploy` and then the idempotent seed whenever `dashboard/prisma/**` changes on main. The daily `scrape.yml` loads rates first. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next: dispatch `backfill-hn.yml` until `remaining` reaches about 0 (needs the push). Then step 10: `retention.py` and the Ops page. See SPEC §10.
+- **`migrate.yml`** runs `prisma migrate deploy` and then the idempotent seed whenever `dashboard/prisma/**` changes on main. The daily `scrape.yml` loads rates first. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next: step 11, the Vercel deploy (root `dashboard/`, region `sin1`, read-only `DATABASE_URL`, `REVALIDATE_SECRET`, then the `DASHBOARD_URL` GitHub secret), README and screenshots. The HN backfill (`backfill-hn.yml`, 2–3 manual runs) waits for the owner. See SPEC §10.

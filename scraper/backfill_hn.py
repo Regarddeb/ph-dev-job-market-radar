@@ -115,9 +115,15 @@ class Store:
         self.conn.close()
 
     def known(self, ids: list[str]) -> set[str]:
+        """Comments already handled. Raw rows are deleted after 90 days (retention.py), so a
+        comment that became a posting also counts; a late re-run then only re-fetches the
+        old non-dev comments."""
         rows = self.conn.execute(
-            "SELECT external_id FROM raw_postings WHERE source_id = %s AND external_id = ANY(%s)",
-            (self.source_id, ids),
+            "SELECT external_id FROM raw_postings WHERE source_id = %(s)s"
+            " AND external_id = ANY(%(ids)s)"
+            " UNION SELECT external_id FROM postings WHERE source_id = %(s)s"
+            " AND external_id = ANY(%(ids)s)",
+            {"s": self.source_id, "ids": ids},
         ).fetchall()
         return {r[0] for r in rows}
 

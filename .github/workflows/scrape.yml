@@ -71,7 +71,12 @@ jobs:
         continue-on-error: true
         run: uv run --project scraper python -m scraper.aggregate
 
-      # Next (build step 10): retention.py.
+      # Trim old text and rows (SPEC §7): descriptions/raw after 90 days, runs after 1 year,
+      # postings and stats after 5 years.
+      - name: Retention
+        id: retention
+        continue-on-error: true
+        run: uv run --project scraper python -m scraper.retention
 
       # Refresh the dashboard's cached pages. Skipped until the dashboard is deployed and
       # the DASHBOARD_URL secret exists (build step 11).
@@ -91,6 +96,7 @@ jobs:
           steps.fx.outcome == 'failure' || steps.remoteok.outcome == 'failure' ||
           steps.hn_hiring.outcome == 'failure' ||
           steps.dedupe.outcome == 'failure' || steps.aggregate.outcome == 'failure' ||
+          steps.retention.outcome == 'failure' ||
           steps.revalidate.outcome == 'failure'
         run: |
           echo "::error::One or more sources failed; see crawl_runs and the step logs."
