@@ -24,6 +24,7 @@ from collections import Counter
 
 from dotenv import load_dotenv
 
+from scraper.db import connect
 from scraper.models import RawItem
 from scraper.pipeline import ROOT, PostingWriter, posting_row, process
 from scraper.sources import get_adapter
@@ -47,9 +48,7 @@ def main(argv: list[str] | None = None) -> int:
         print("DATABASE_URL is not set (jobradar_rw role; see .env.example)", file=sys.stderr)
         return 2
 
-    import psycopg
-
-    with psycopg.connect(dsn, autocommit=False) as conn:
+    with connect(dsn) as conn:
         row = conn.execute("SELECT id FROM sources WHERE slug = %s", (adapter.SLUG,)).fetchone()
         if row is None:
             raise SystemExit(f"source {adapter.SLUG!r} not seeded")

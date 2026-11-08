@@ -1,0 +1,49 @@
+name: migrate
+
+# Apply committed Prisma migrations to Neon, then re-run the idempotent seed (sources, skills,
+# aliases from prisma/data/skills.json), whenever the schema or seed data changes on main.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/prisma/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: dashboard
+    env:
+      # Owner role on Neon's DIRECT endpoint: Prisma Migrate needs DDL rights and no pooler.
+      MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: dashboard/package.json # pnpm version from "packageManager"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+
+      - name: Install (runs prisma generate)
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm db:deploy
+
+      - name: Seed reference data (idempotent)
+        run: pnpm db:seed

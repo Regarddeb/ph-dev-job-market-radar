@@ -25,6 +25,7 @@ from datetime import date, timedelta
 
 from dotenv import load_dotenv
 
+from scraper.db import connect
 from scraper.pipeline import ROOT
 
 TZ = "Asia/Manila"  # inlined in the SQL below
@@ -80,9 +81,7 @@ def main(argv: list[str] | None = None) -> int:
         print("DATABASE_URL is not set (jobradar_rw role; see .env.example)", file=sys.stderr)
         return 2
 
-    import psycopg
-
-    with psycopg.connect(dsn, autocommit=False) as conn:
+    with connect(dsn) as conn:
         start, end = conn.execute(SQL_RANGE, {"full": args.full, "days": args.days}).fetchone()
         if start is None:  # --full on an empty table
             print("no postings; nothing to aggregate")

@@ -1,0 +1,61 @@
+name: backfill-hn
+
+# Manual: load past HN "Who is Hiring?" threads (docs/SPEC.md §9). ~27k requests at 1 s
+# for 60 months, so one run is capped below GitHub's 6 h job limit and the backfill takes
+# 2-3 runs. Resumable: comments already stored are skipped, so just run it again.
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: "How many months back"
+        default: "60"
+        required: true
+      max_requests:
+        description: "Stop after this many HTTP requests (~1 s each)"
+        default: "15000"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backfill-hn
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 345 # 5 h 45 m: under the 6 h limit, with time for aggregate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }} # jobradar_rw role (no DDL)
+      SCRAPER_USER_AGENT: ${{ secrets.SCRAPER_USER_AGENT }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: scraper/uv.lock
+
+      - name: Install scraper
+        run: uv sync --project scraper --frozen
+
+      - name: Backfill
+        id: backfill
+        continue-on-error: true # stats below still run for whatever was stored
+        env: # inputs via env, never interpolated into the script (injection-safe)
+          MONTHS: ${{ inputs.months }}
+          MAX_REQUESTS: ${{ inputs.max_requests }}
+        run: >-
+          uv run --project scraper python -m scraper.backfill_hn
+          --months "$MONTHS" --max-requests "$MAX_REQUESTS"
+
+      - name: Aggregate (full history)
+        run: uv run --project scraper python -m scraper.aggregate --full
+
+      - name: Fail if the backfill failed
+        if: steps.backfill.outcome == 'failure'
+        run: |
+          echo "::error::Backfill stopped with an error; re-run the workflow to resume."
+          exit 1

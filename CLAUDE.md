@@ -55,6 +55,7 @@ uv run --project scraper python -m scraper.reparse --source <slug> [--dry-run]  
 uv run --project scraper python -m scraper.fx [--history|--fixture <f>|--capture] [--dry-run]  # ECB rates -> exchange_rates
 uv run --project scraper python -m scraper.dedupe [--dry-run] [--recompute]     # mark duplicates (all sources)
 uv run --project scraper python -m scraper.aggregate [--full|--days N] [--dry-run]  # daily_skill_stats (Manila days)
+uv run --project scraper python -m scraper.backfill_hn [--months 60] [--max-requests N] [--dry-run]  # past HN threads (resumable)
 
 # dashboard (cd dashboard)
 pnpm install                 # also runs prisma generate
@@ -80,6 +81,7 @@ uv run --no-project python .claude/hooks/test_hooks.py
 ## Gotchas
 - **Smart App Control is on** in this Windows install, and it sometimes blocks uv's venv launchers (`.venv/Scripts/python.exe`, `pytest.exe`) with "An Application Control policy has blocked this file". Fix it with `cd scraper && uv venv --clear && uv sync`. Prefer `python -m pytest` over the `pytest.exe` shim.
 - **Neon connections can fail on the first try** (P1001 / timeouts) while the compute wakes from scale-to-zero. Retry once before debugging.
+- **Open Postgres connections only with `scraper.db.connect`.** It sets a connect timeout, TCP keepalives and `tcp_user_timeout`. Without them, a connection Neon silently drops makes a statement hang about 10 minutes; this happened twice. Long runs use autocommit with one transaction per item, so a crash keeps earlier work.
 - **Skills live in `dashboard/prisma/data/skills.json`.** Each skill carries its own `match` / `no_match` examples. Use `/add-skill-tag`.
 
 - **Adapters must be in the `ADAPTERS` allowlist** (`scraper/sources/__init__.py`) and Allowed in SOURCES.md. `tests/test_sources_registry.py` enforces both.
@@ -96,4 +98,5 @@ uv run --no-project python .claude/hooks/test_hooks.py
 Steps 1–8 are done. The daily run is fx → remoteok → hn_hiring → dedupe → aggregate → revalidate; revalidate is skipped until `DASHBOARD_URL` exists. Overview, Skills and Salaries show real charts.
 - **Two live sources:** Remote OK (39 dev postings) and **HN "Who is Hiring?"** (156 from the November 2026 thread, official API, incremental). Both get seniority, job type, ph_eligible, PHP salary (ECB rates since 2021) and skills derived.
 - **We Work Remotely is Unclear** (2026-11-08): don't build it until the owner confirms its terms.
-- **The HN 5-year backfill is designed** (SPEC §9) and built in step 9. The daily `scrape.yml` loads rates first. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next is step 9: `migrate.yml`, then `backfill-hn.yml` (per the SPEC §9 design) and one backfill run. See SPEC §10.
+- **The HN 5-year backfill is built** (`scraper/backfill_hn.py`, `backfill-hn.yml`, resumable, about 2–3 manual runs). It was tested with 60 requests into October 2026: 44 inactive postings with their historical dates.
+- **`migrate.yml`** runs `prisma migrate deploy` and then the idempotent seed whenever `dashboard/prisma/**` changes on main. The daily `scrape.yml` loads rates first. **Remotive is excluded** (Forbidden in SOURCES.md since 2026-11-06). `/postings` lists active canonical postings via the cached loader `lib/queries/postings.ts` (tag `postings`; prerendered at build, so `pnpm build` reads Neon). Next: dispatch `backfill-hn.yml` until `remaining` reaches about 0 (needs the push). Then step 10: `retention.py` and the Ops page. See SPEC §10.

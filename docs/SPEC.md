@@ -188,7 +188,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
   - **Size.** Raw payloads and descriptions older than 90 days are trimmed by `retention.py`, so 5 years stays around the 0.3 GB estimate in §7. Run `aggregate.py --full` afterwards.
   - **Monthly reposts.** Employers repost each month. Those land more than 30 days apart, outside dedupe's window, so each month counts as a separate posting (a monthly demand signal).
 - **HN in the daily run** (`scrape.yml`, step 8): only the current thread, incrementally. Stored final comments are skipped and marked as still listed. Deleted or dead comments are never stored, so they're re-checked each run (~40 requests).
-- `migrate.yml` runs on push to `main` when `dashboard/prisma/**` changes: `prisma migrate deploy` using `MIGRATE_DATABASE_URL`.
+- `migrate.yml` runs on push to `main` when `dashboard/prisma/**` changes (and on manual dispatch): `prisma migrate deploy` using `MIGRATE_DATABASE_URL`, then the idempotent `pnpm db:seed` so sources and the skill dictionary follow the committed data.
 
 ## 10. Build order
 
@@ -200,6 +200,6 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 6. Dedupe (`scraper/dedupe.py`, daily step after the sources). ✅
 7. `aggregate.py`, chart widgets, `/api/revalidate` wired to cached loaders. ✅ (`scrape.yml` calls it once the `DASHBOARD_URL` secret exists.)
 8. HN "Who is Hiring?" parser (the BeautifulSoup showcase) and We Work Remotely RSS. ✅ HN is live (daily, incremental), and the 5-year backfill is designed (§9). We Work Remotely moved to **Unclear** (2026-11-08): its terms reportedly forbid storing data, and the owner must confirm before any adapter.
-9. Workflows: `scrape.yml`, `migrate.yml`, then one run of `backfill-hn.yml`.
+9. Workflows: `scrape.yml`, `migrate.yml`, then one run of `backfill-hn.yml`. ✅ All three workflows exist. `migrate.yml` also re-runs the idempotent seed. The backfill command was verified locally on October 2026; the full 60-month backfill runs via `backfill-hn.yml` after push.
 10. `retention.py` and the Ops page DB-size warning.
 11. Deploy the dashboard to Vercel; README with architecture, fixture-based tests, attribution, screenshots.

@@ -36,6 +36,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from lxml import etree
 
+from scraper.db import connect
 from scraper.http import HttpClient
 
 BASE = "https://www.ecb.europa.eu/stats/eurofxref"
@@ -141,9 +142,8 @@ ON CONFLICT (date, currency) DO UPDATE SET php_per_unit = EXCLUDED.php_per_unit
 
 
 def store(dsn: str, rates: list[Rate]) -> None:
-    import psycopg
 
-    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+    with connect(dsn) as conn, conn.cursor() as cur:
         cur.executemany(SQL_UPSERT, [(r.day, r.currency, r.php_per_unit) for r in rates])
 
 

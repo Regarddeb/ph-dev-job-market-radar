@@ -29,6 +29,7 @@ from typing import Any
 from dotenv import load_dotenv
 from pydantic import ValidationError
 
+from scraper.db import connect
 from scraper.http import FetchError, HttpClient
 from scraper.models import Page, ParsedPosting, RawItem
 from scraper.normalize import classify
@@ -204,9 +205,9 @@ RETURNING id
 """
 
 # %(seen)s: true for a crawl (the posting was just seen: bump last_seen_at, mark active);
-# false for a reparse from stored raw (leave the crawl history alone). For rows a reparse
-# inserts, %(seen_at)s is the raw fetch time and %(active)s says whether that fetch was in
-# the source's latest successful crawl (an older item may have left the feed).
+# false for a reparse or backfill (leave the crawl history alone). Rows inserted that way
+# take %(first_seen)s / %(last_seen)s (reparse: the raw fetch time; backfill: the posting's
+# own dates) and %(active)s.
 SQL_POSTING_UPSERT = """
 INSERT INTO postings (
     raw_posting_id, source_id, external_id, company_id, title, title_normalized,
@@ -219,7 +220,7 @@ VALUES (
     %(work_setup)s::work_setup, %(ph_eligible)s, %(location_text)s,
     %(salary_raw)s, %(salary_currency)s, %(salary_period)s,
     %(description)s, %(source_url)s, %(posted_at)s, %(fingerprint)s,
-    COALESCE(%(seen_at)s, now()), COALESCE(%(seen_at)s, now()), %(active)s)
+    COALESCE(%(first_seen)s, now()), COALESCE(%(last_seen)s, now()), %(active)s)
 ON CONFLICT (source_id, external_id) DO UPDATE SET
     raw_posting_id   = EXCLUDED.raw_posting_id,
     company_id       = EXCLUDED.company_id,
@@ -324,10 +325,15 @@ class PostingWriter:
         seen: bool,
         seen_at: Any = None,
         active_if_new: bool = True,
+        first_seen: Any = None,
+        last_seen: Any = None,
     ) -> tuple[int, bool]:
         """Upsert the posting. Returns (posting id, inserted?).
 
-        active_if_new only applies when a reparse inserts a row; a crawl always passes True.
+        For rows inserted without a crawl (seen=False): seen_at sets both first and last
+        seen (reparse); first_seen / last_seen set them separately (backfill), and
+        active_if_new says whether the row starts active. A crawl always inserts active rows
+        seen now.
         """
         company_id = None
         if p.company_name and (norm := normalize_company(p.company_name)):
@@ -338,7 +344,8 @@ class PostingWriter:
             "source_id": self.source_id,
             "company_id": company_id,
             "seen": seen,
-            "seen_at": seen_at,
+            "first_seen": first_seen or seen_at,
+            "last_seen": last_seen or seen_at,
             "active": True if seen else active_if_new,
         }
         posting_id, inserted = self.conn.execute(SQL_POSTING_UPSERT, params).fetchone()
@@ -363,9 +370,8 @@ class Loader:
     the run; the crawl_runs row is committed first so failures are always recorded."""
 
     def __init__(self, dsn: str, slug: str) -> None:
-        import psycopg  # local import: --dry-run never needs a database driver connection
 
-        self.conn = psycopg.connect(dsn, autocommit=False)
+        self.conn = connect(dsn)
         row = self.conn.execute(
             "SELECT id, is_active FROM sources WHERE slug = %s", (slug,)
         ).fetchone()
