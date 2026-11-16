@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/skills", label: "Skills" },
   { href: "/salaries", label: "Salaries" },
   { href: "/ops", label: "Status" },
+  { href: "/docs", label: "How it works" },
 ] as const;
 
 /** Sticky site header: brand, section links (current one marked) and the theme toggle. */
