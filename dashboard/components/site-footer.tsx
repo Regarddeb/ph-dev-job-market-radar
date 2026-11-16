@@ -9,6 +9,10 @@ export function SiteFooter() {
           Job data from{" "}
           <a href="https://remoteok.com" target="_blank" rel="noopener" className={LINK}>
             Remote OK
+          </a>
+          ,{" "}
+          <a href="https://jobicy.com" target="_blank" rel="noopener" className={LINK}>
+            Jobicy
           </a>{" "}
           and the{" "}
           <a href="https://news.ycombinator.com" target="_blank" rel="noopener" className={LINK}>

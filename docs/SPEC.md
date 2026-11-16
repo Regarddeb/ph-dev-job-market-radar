@@ -80,7 +80,7 @@ daily_skill_stats(date, skill_id, active_postings, new_postings, median_salary_p
 ```
 
 **Additions in the implemented schema** (marked `(+)` in `schema.prisma`):
-- `sources.slug` (unique): the `--source <slug>` key and the Python module name (`remoteok`, `hn_hiring`; `weworkremotely` is seeded inactive and is Unclear).
+- `sources.slug` (unique): the `--source <slug>` key and the Python module name (`remoteok`, `hn_hiring`, `jobicy`; `weworkremotely` is seeded inactive and is Unclear).
 - `postings.external_id` + `UNIQUE(source_id, external_id)`: the posting upsert key.
 - `skill_aliases.requirements_only`: the alias only matches inside an extracted requirements section.
 - Enums are Postgres enum types: `source_kind`, `crawl_status`, `seniority`, `job_type`, `work_setup`, `skill_category`.
@@ -194,6 +194,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
   - **History, not "seen now".** A backfilled posting takes `first_seen_at` = the comment's time and `last_seen_at` = the thread's end (the next thread's time). It is inserted with `is_active = false`, and the backfill writes no `crawl_runs` or "seen" bumps. PHP salaries convert at the first-seen date; ECB history goes back to 2021.
   - **Size.** Raw payloads and descriptions older than 90 days are trimmed by `retention.py`, so 5 years stays around the 0.3 GB estimate in §7. Run `aggregate.py --full` afterwards.
   - **Monthly reposts.** Employers repost each month. Those land more than 30 days apart, outside dedupe's window, so each month counts as a separate posting (a monthly demand signal).
+- **Jobicy in the daily run** (2026-11-16): the official API serves only the last 7 days, 100 per request. Each run walks the whole window by cursor (about 12 requests, capped at 20), so a Jobicy posting is active while it is inside the window. `jobGeo` is kept as the location, and `jobType` and the structured salary fields are used as stated.
 - **HN in the daily run** (`scrape.yml`, step 8): only the current thread, incrementally. Stored final comments are skipped and marked as still listed. Deleted or dead comments are never stored, so they're re-checked each run (~40 requests).
 - `migrate.yml` runs on push to `main` when `dashboard/prisma/**` changes (and on manual dispatch): `prisma migrate deploy` using `MIGRATE_DATABASE_URL`, then the idempotent `pnpm db:seed` so sources and the skill dictionary follow the committed data.
 

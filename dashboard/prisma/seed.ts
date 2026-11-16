@@ -60,6 +60,16 @@ const SOURCES: SourceSeed[] = [
     isActive: true,
     termsUrl: "https://github.com/HackerNews/API",
   },
+  {
+    slug: "jobicy",
+    name: "Jobicy",
+    baseUrl: "https://jobicy.com",
+    kind: SourceKind.api,
+    attributionText: "via Jobicy",
+    crawlIntervalMinutes: 1440,
+    isActive: true, // adapter: scraper/sources/jobicy.py (terms checked 2026-11-16)
+    termsUrl: "https://jobicy.com/jobs-rss-feed",
+  },
 ];
 
 type SkillSeed = {

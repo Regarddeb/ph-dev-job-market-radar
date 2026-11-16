@@ -59,6 +59,13 @@ jobs:
         continue-on-error: true
         run: uv run --project scraper python -m scraper.pipeline --source hn_hiring
 
+      # Official keyless API: the whole 7-day window by cursor (about 12 requests). Its docs
+      # ask for at most hourly polling and never at minute 00; this runs once a day at :07+.
+      - name: Source - jobicy
+        id: jobicy
+        continue-on-error: true
+        run: uv run --project scraper python -m scraper.pipeline --source jobicy
+
       # Across all sources, after every source has loaded. Only adds duplicates; idempotent.
       - name: Dedupe
         id: dedupe
@@ -94,7 +101,7 @@ jobs:
       - name: Fail if any step failed
         if: >-
           steps.fx.outcome == 'failure' || steps.remoteok.outcome == 'failure' ||
-          steps.hn_hiring.outcome == 'failure' ||
+          steps.hn_hiring.outcome == 'failure' || steps.jobicy.outcome == 'failure' ||
           steps.dedupe.outcome == 'failure' || steps.aggregate.outcome == 'failure' ||
           steps.retention.outcome == 'failure' ||
           steps.revalidate.outcome == 'failure'

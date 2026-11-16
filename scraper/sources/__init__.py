@@ -15,7 +15,7 @@ from types import ModuleType
 
 # Explicit allowlist: adding a source means adding it here (via /add-source) AND marking it
 # Allowed in docs/SOURCES.md. tests/test_sources_registry.py checks both.
-ADAPTERS: tuple[str, ...] = ("remoteok", "hn_hiring")
+ADAPTERS: tuple[str, ...] = ("remoteok", "hn_hiring", "jobicy")
 
 
 def get_adapter(slug: str) -> ModuleType:
