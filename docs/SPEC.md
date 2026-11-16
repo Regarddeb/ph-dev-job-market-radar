@@ -96,6 +96,7 @@ daily_skill_stats(date, skill_id, active_postings, new_postings, median_salary_p
 - `--source <name>` runs one source. `--dry-run` fetches and parses but doesn't write.
 - Every run writes a `crawl_runs` row (status, counts, error).
 - Parse failures are stored in `raw_postings.parse_error` and don't abort the run.
+- A row the database refuses (a CHECK or type violation) is skipped and counted, and the run carries on. The `crawl_runs` row stays `ok` with a note in `error_message`, nothing is deactivated that run, and the command exits 1 so the workflow step is flagged. Connection errors still end the run.
 
 ## 6. Processing rules
 
@@ -174,6 +175,11 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
   - Salaries covers postings first seen in the last 90 days. Each posting counts at its (min + max)/2 monthly PHP midpoint. Only skills with n ≥ 3 are charted, and the page cites the ECB for exchange rates.
   - Chart colours are the validated dataviz categorical slots (`--chart-1..5` in `globals.css`).
   - **PH-friendly roles** (`/ph-friendly`) replaces "Matches for me". The site is public and informational, so visitors pick skills and job types themselves. Filtering runs client-side (`lib/ph-filter.ts`), so the page stays cached (tag `postings`).
+- As built (2026-11-16, public-dashboard pass):
+  - **Postings** (`/postings`) is filtered and paged on the server. The URL is the state (`q`, `type`, `setup`, `skill`, `source`, `ph`, `salary`, `sort`, `page`; `lib/postings-params.ts`), so any view can be shared. 25 per page, numbered pagination. Filter sets without free text are cached per set (tag `postings`); a text search goes straight to the database. The page shell is prerendered and the results stream in (Partial Prerender).
+  - **One posting card** (`components/posting-card.tsx`) is used by Overview, Postings and PH-friendly. It shows only stated fields: company, location, salary as written plus the ECB-converted `≈ ₱…/month` when there is one, work setup, job type, seniority, a PH-friendly mark and skills.
+  - **PH-friendly** shows 20 roles at a time ("Show more"); its filters stay client-side.
+  - **Shell:** sticky header with the current section marked, light/dark theme (system default, remembered in `localStorage`, set by an inline script before first paint), and a footer on every page naming the sources and citing the ECB. Ops is labelled "Status" in the UI; the route is still `/ops`.
 - Every posting row shows a "via <Source>" link to `source_url`.
 - Data loaders use `'use cache'` + `cacheTag` with the tags `postings`, `skill-stats` and `ops`.
 - `POST /api/revalidate` (Bearer `REVALIDATE_SECRET`) calls `revalidateTag(tag, "max")` for each tag.

@@ -12,6 +12,14 @@ export function phpFull(value: number): string {
   return `₱${Math.round(value).toLocaleString("en-PH")}`;
 }
 
+/** "₱190k–₱253k", or one figure when both ends are equal; null when there is no PHP amount. */
+export function phpRange(min: number | null, max: number | null): string | null {
+  const lo = min ?? max;
+  const hi = max ?? min;
+  if (lo == null || hi == null) return null;
+  return lo === hi ? phpCompact(lo) : `${phpCompact(lo)}–${phpCompact(hi)}`;
+}
+
 /** Share of a total as a whole percent; "—" when the total is 0. */
 export function percent(part: number, total: number): string {
   return total > 0 ? `${Math.round((100 * part) / total)}%` : "—";

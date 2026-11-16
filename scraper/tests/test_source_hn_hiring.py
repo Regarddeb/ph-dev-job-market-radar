@@ -167,6 +167,34 @@ def test_not_relevant(parsed: dict[str, ParsedPosting], ext_id: str) -> None:
     assert not hn.is_relevant(parsed[ext_id])
 
 
+def _comment(text: str) -> RawItem:
+    payload = json.dumps({"id": 1, "type": "comment", "time": 1794000000, "text": text})
+    return RawItem(external_id="1", url=hn.comment_url(1), payload=payload)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "SEEKING WORK | Remote | Full-stack engineer",
+        "SEEKING FREELANCE - Egypt (UTC+2) - Remote<p>Senior Full-Stack Engineer (4+ yrs).",
+        "Seeking freelance | Backend Developer | Remote",
+    ],
+)
+def test_freelancer_thread_seekers_are_not_postings(text: str) -> None:
+    assert not hn.is_relevant(hn.parse(_comment(text)))
+
+
+def test_seeking_freelancer_is_a_client_not_a_company() -> None:
+    p = hn.parse(
+        _comment("SEEKING FREELANCER | Devops Engineer | Remote - UK or EU<p>We need help.")
+    )
+    assert hn.is_relevant(p)
+    assert p.company_name is None  # the tag is not a company; the header states none
+    assert p.title == "Devops Engineer"
+    assert p.location_text == "Remote - UK or EU"
+    assert p.job_type == "freelance"  # stated by the tag itself
+
+
 def test_derived_fields_on_hn_text(parsed: dict[str, ParsedPosting]) -> None:
     row = pipeline.posting_row(parsed["50338732"])
     assert row["work_setup"] == "remote"

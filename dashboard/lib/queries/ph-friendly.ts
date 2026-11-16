@@ -14,6 +14,11 @@ export type PhRole = {
   locationText: string | null;
   salaryRaw: string | null;
   jobType: string;
+  workSetup: string;
+  seniority: string;
+  phEligible: boolean | null;
+  salaryMinPhpMonthly: number | null;
+  salaryMaxPhpMonthly: number | null;
   postedAt: Date | null;
   firstSeenAt: Date;
   sourceUrl: string;
@@ -35,6 +40,10 @@ export async function getPhFriendlyRoles(): Promise<PhRole[]> {
   return db().$queryRaw<PhRole[]>`
     SELECT p.id, p.title, c.name AS company, p.location_text AS "locationText",
            p.salary_raw AS "salaryRaw", p.job_type::text AS "jobType",
+           p.work_setup::text AS "workSetup", p.seniority::text AS seniority,
+           p.ph_eligible AS "phEligible",
+           p.salary_min_php_monthly AS "salaryMinPhpMonthly",
+           p.salary_max_php_monthly AS "salaryMaxPhpMonthly",
            p.posted_at AS "postedAt", p.first_seen_at AS "firstSeenAt",
            p.source_url AS "sourceUrl", src.name AS "sourceName",
            coalesce(array_agg(s.name ORDER BY s.name) FILTER (WHERE s.name IS NOT NULL), '{}')

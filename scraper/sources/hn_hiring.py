@@ -148,9 +148,16 @@ _JOB_TYPE_ONLY = re.compile(
 )
 # Job seekers who post in the hiring thread by mistake. Checked on the header line only
 # (employers write "I'm the founder..." further down), plus the seeker-template field.
+# "SEEKING WORK" / "SEEKING FREELANCE" are the freelancer thread's tags for people offering
+# their services; "SEEKING FREELANCER" is the opposite (a client hiring), see _FREELANCER_TAG.
 _SEEKER_HEADER = re.compile(
-    r"^\W*(?:(?:i'?m|i am|my name is|hi,? i'?m)\b|location\s*:)", re.I
+    r"^\W*(?:(?:i'?m|i am|my name is|hi,? i'?m)\b|location\s*:"
+    r"|seeking\s+(?:work|freelance(?!rs?\b))\b)",
+    re.I,
 )  # \b: "IMC Trading | ..." is an employer, not "I'm ..."
+# A header segment that is only the freelancer thread's client tag: not a company name, and
+# it states the job type.
+_FREELANCER_TAG = re.compile(r"^\W*seeking\s+freelancers?\W*$", re.I)
 # Where a role line's detail starts: "Forward Deployed Engineer ($148K) — NYC or SF".
 _DASHES = "-" + chr(0x2013) + chr(0x2014)  # hyphen, en dash, em dash
 _ROLE_LINE_END = re.compile(r"\s+(?:\(|[" + _DASHES + r"]|\|)\s*|:\s")
@@ -233,13 +240,20 @@ def parse(raw: RawItem) -> ParsedPosting:
 
     company = title = location = salary = None
     segments = _segments(header)
+    job_type = "unspecified"
+    if segments and _FREELANCER_TAG.match(segments[0]):
+        # "SEEKING FREELANCER | Devops Engineer | Remote": the tag is the poster's own
+        # statement of the job type, and no segment is known to be the company.
+        job_type = "freelance"
+        segments = ["", *segments[1:]]
     if len(segments) >= 2:
         first, rest = segments[0], segments[1:]
         # The first segment is the company unless it's clearly something else (a URL, a
         # place such as "Cologne, Germany", or a role).
         company = (
             first
-            if len(first) <= _MAX_COMPANY
+            if first
+            and len(first) <= _MAX_COMPANY
             and not _URL.match(first)
             and not _CITY_REGION.match(first)
             and not is_dev_title(first)
@@ -268,6 +282,7 @@ def parse(raw: RawItem) -> ParsedPosting:
         description=description,
         posted_at=datetime.fromtimestamp(item["time"], tz=UTC) if item.get("time") else None,
         salary_raw=salary,
+        job_type=job_type,
     )
 
 

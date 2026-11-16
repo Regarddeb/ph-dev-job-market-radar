@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from "react";
 
-import { enumLabel } from "@/lib/format";
-import { postedLabel } from "@/lib/format-posting";
+import { PostingCard, PostingList } from "@/components/posting-card";
 import { DEFAULT_JOB_TYPES, JOB_TYPE_OPTIONS, filterRoles, skillCounts } from "@/lib/ph-filter";
 import type { PhRole } from "@/lib/queries/ph-friendly";
 
 const MAX_SKILL_CHIPS = 24;
+/** Roles shown at first, and added by each "Show more". */
+const PAGE = 20;
 
 function toggle(set: Set<string>, value: string): Set<string> {
   const next = new Set(set);
@@ -30,7 +31,7 @@ function Chip({
       type="button"
       aria-pressed={on}
       onClick={onClick}
-      className="aria-pressed:border-foreground/40 aria-pressed:bg-muted rounded-md border px-2.5 py-1 text-xs"
+      className="hover:bg-muted aria-pressed:bg-foreground aria-pressed:text-background focus-visible:ring-ring/50 rounded-md border px-2.5 py-1 text-xs outline-none focus-visible:ring-3 aria-pressed:border-transparent"
     >
       {children}
     </button>
@@ -41,8 +42,10 @@ function Chip({
 export function PhRoles({ roles }: { roles: PhRole[] }) {
   const [jobTypes, setJobTypes] = useState(() => new Set(DEFAULT_JOB_TYPES));
   const [skills, setSkills] = useState(() => new Set<string>());
+  const [limit, setLimit] = useState(PAGE);
   const chips = useMemo(() => skillCounts(roles).slice(0, MAX_SKILL_CHIPS), [roles]);
-  const shown = filterRoles(roles, jobTypes, skills);
+  const matched = filterRoles(roles, jobTypes, skills);
+  const shown = matched.slice(0, limit);
 
   return (
     <div className="space-y-6">
@@ -53,7 +56,10 @@ export function PhRoles({ roles }: { roles: PhRole[] }) {
             <Chip
               key={o.value}
               on={jobTypes.has(o.value)}
-              onClick={() => setJobTypes((s) => toggle(s, o.value))}
+              onClick={() => {
+                setJobTypes((s) => toggle(s, o.value));
+                setLimit(PAGE);
+              }}
             >
               {o.label}
             </Chip>
@@ -67,9 +73,12 @@ export function PhRoles({ roles }: { roles: PhRole[] }) {
             <Chip
               key={c.name}
               on={skills.has(c.name)}
-              onClick={() => setSkills((s) => toggle(s, c.name))}
+              onClick={() => {
+                setSkills((s) => toggle(s, c.name));
+                setLimit(PAGE);
+              }}
             >
-              {c.name} <span className="text-muted-foreground">{c.n}</span>
+              {c.name} <span className="opacity-60">{c.n}</span>
             </Chip>
           ))}
           {skills.size > 0 && (
@@ -85,61 +94,34 @@ export function PhRoles({ roles }: { roles: PhRole[] }) {
       </div>
 
       <p className="text-muted-foreground text-sm" aria-live="polite">
-        Showing {shown.length} of {roles.length} PH-friendly roles.
+        {matched.length} of {roles.length} PH-friendly roles match.
       </p>
 
-      {shown.length === 0 ? (
+      {matched.length === 0 ? (
         <p className="text-muted-foreground text-sm">No roles match these filters.</p>
       ) : (
-        <ul className="space-y-3">
-          {shown.map((r) => (
-            <RoleCard key={r.id} r={r} selected={skills} />
-          ))}
-        </ul>
+        <>
+          <PostingList>
+            {shown.map((r) => (
+              <PostingCard key={r.id} p={r} highlight={skills} />
+            ))}
+          </PostingList>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-muted-foreground text-sm tabular-nums">
+              Showing {shown.length} of {matched.length}
+            </p>
+            {shown.length < matched.length && (
+              <button
+                type="button"
+                onClick={() => setLimit((n) => n + PAGE)}
+                className="hover:bg-muted focus-visible:ring-ring/50 h-9 rounded-lg border px-3 text-sm outline-none focus-visible:ring-3"
+              >
+                Show {Math.min(PAGE, matched.length - shown.length)} more
+              </button>
+            )}
+          </div>
+        </>
       )}
     </div>
-  );
-}
-
-function RoleCard({ r, selected }: { r: PhRole; selected: Set<string> }) {
-  const posted = postedLabel(r.postedAt, r.firstSeenAt);
-  // Only what the posting states; missing parts are left out rather than shown as "—".
-  const meta = [
-    r.company,
-    r.locationText,
-    r.jobType === "unspecified" ? "Job type not stated" : enumLabel(r.jobType),
-    r.salaryRaw,
-  ].filter(Boolean);
-  return (
-    <li className="ring-foreground/10 space-y-2 rounded-xl p-4 ring-1">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h3 className="font-medium">{r.title}</h3>
-        <span className="text-muted-foreground text-sm">{posted.text}</span>
-      </div>
-      <p className="text-muted-foreground text-sm">{meta.join(" · ")}</p>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <ul className="flex flex-wrap gap-1.5" aria-label="Skills">
-          {r.skills.map((skill) => (
-            <li
-              key={skill}
-              className={`rounded-md px-2 py-0.5 text-xs ${
-                selected.has(skill) ? "bg-foreground text-background" : "bg-muted"
-              }`}
-            >
-              {skill}
-            </li>
-          ))}
-        </ul>
-        {/* Followed link (no nofollow/noreferrer): attribution per each source's terms. */}
-        <a
-          href={r.sourceUrl}
-          target="_blank"
-          rel="noopener"
-          className="hover:text-foreground text-sm underline underline-offset-4"
-        >
-          via {r.sourceName}
-        </a>
-      </div>
-    </li>
   );
 }

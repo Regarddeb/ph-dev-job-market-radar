@@ -4,7 +4,7 @@ import { SalaryRange } from "@/components/charts/salary-range";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MIN_SAMPLE, SALARY_WINDOW_DAYS, getSkillSalaries } from "@/lib/queries/salaries";
 
-export const metadata: Metadata = { title: "Salaries · PH Dev Job Market Radar" };
+export const metadata: Metadata = { title: "Salaries" };
 
 export default async function SalariesPage() {
   const all = await getSkillSalaries();
@@ -14,7 +14,7 @@ export default async function SalariesPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Salaries</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Salaries</h1>
         <p className="text-muted-foreground text-sm">
           Monthly pay in PHP for postings first seen in the last {SALARY_WINDOW_DAYS} days that
           state a salary with a period. Each posting counts at its midpoint, (min + max) / 2.

@@ -19,7 +19,7 @@ import {
   type SourceHealth,
 } from "@/lib/queries/ops";
 
-export const metadata: Metadata = { title: "Ops · PH Dev Job Market Radar" };
+export const metadata: Metadata = { title: "Status" };
 
 function health(s: SourceHealth) {
   if (!s.isActive) return <span className="text-muted-foreground text-sm">Inactive</span>;
@@ -37,7 +37,7 @@ export default async function OpsPage() {
   return (
     <section className="space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">Ops</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Status</h1>
         <p className="text-muted-foreground text-sm">
           Crawl health and database size, as of {manilaDateTime(ops.checkedAt)} (Manila). Times are
           Manila time.

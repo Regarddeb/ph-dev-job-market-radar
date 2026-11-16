@@ -83,3 +83,38 @@ def test_salary_fields_without_period_give_no_monthly() -> None:
     fields = pipeline.salary_fields(p)
     assert fields["salary_period"] is None
     assert fields["salary_min_monthly"] is None and fields["salary_max_monthly"] is None
+
+
+class _FlakyLoader:
+    """Stands in for Loader: refuses one item the way a CHECK violation would."""
+
+    def __init__(self, bad_id: str, exc: Exception) -> None:
+        self.bad_id, self.exc, self.stored = bad_id, exc, 0
+
+    def store(self, outcome: pipeline.Outcome) -> bool:
+        if outcome.raw.external_id == self.bad_id:
+            raise self.exc
+        self.stored += 1
+        return True
+
+    @staticmethod
+    def is_row_error(exc: BaseException) -> bool:
+        return isinstance(exc, ValueError)
+
+
+def test_one_row_the_database_refuses_does_not_sink_the_run() -> None:
+    pages = list(pipeline.pages_from_fixture(remoteok, FIXTURE))
+    ids = [r.external_id for r in remoteok.split(pages[0])]
+    loader = _FlakyLoader(ids[1], ValueError("violates check constraint"))
+    stats = pipeline.run(remoteok, pages, loader)  # type: ignore[arg-type]
+    assert [e[0] for e in stats.store_errors] == [ids[1]]
+    assert loader.stored == len(ids) - 1
+    assert stats.new_postings == len(ids) - 1
+
+
+def test_a_connection_error_still_ends_the_run() -> None:
+    pages = list(pipeline.pages_from_fixture(remoteok, FIXTURE))
+    ids = [r.external_id for r in remoteok.split(pages[0])]
+    loader = _FlakyLoader(ids[1], ConnectionError("server closed the connection"))
+    with pytest.raises(ConnectionError):
+        pipeline.run(remoteok, pages, loader)  # type: ignore[arg-type]

@@ -63,6 +63,8 @@ class Stats:
     new_postings: int = 0
     # Incremental sources (HN): listed items not re-fetched because they're stored and final.
     skipped_known: int = 0
+    # Items the database refused (external id, message). The run carries on past them.
+    store_errors: list[tuple[str, str]] = field(default_factory=list)
 
 
 def content_hash(payload: str) -> str:
@@ -416,6 +418,15 @@ class Loader:
             _, inserted = self.writer.write(outcome.posting, raw_id, seen=True)
             return inserted
 
+    @staticmethod
+    def is_row_error(exc: BaseException) -> bool:
+        """True for errors caused by one item's data (a CHECK or type violation, a value too
+        long). Its transaction has rolled back and the next item can proceed. Connection
+        and server errors are not row errors: they end the run."""
+        import psycopg
+
+        return isinstance(exc, psycopg.DataError | psycopg.IntegrityError)
+
     def listing_callback(
         self, adapter: ModuleType, stats: Stats
     ) -> Callable[[list[str]], set[str]]:
@@ -439,6 +450,10 @@ class Loader:
         return on_listing
 
     def finish(self, stats: Stats, error: str | None = None) -> None:
+        note = error
+        if note is None and stats.store_errors:
+            ext_id, first = stats.store_errors[0]
+            note = f"{len(stats.store_errors)} item(s) not stored; first {ext_id}: {first}"[:2000]
         self.conn.rollback()  # discard anything half-done before recording the outcome
         with self.conn.transaction():
             self.conn.execute(
@@ -451,7 +466,7 @@ class Loader:
                     stats.pages,
                     len(stats.relevant),
                     stats.new_postings,
-                    error,
+                    note,
                     self.run_id,
                 ),
             )
@@ -462,7 +477,9 @@ class Loader:
                 # Active = listed in the source's latest successful crawl. Only after a
                 # complete, error-free run, and only if it found or re-listed postings (an
                 # empty feed is more likely an outage than every job closing at once).
-                if stats.relevant or stats.skipped_known:
+                # Not when an item failed to store either: it wasn't marked seen, so it would
+                # be deactivated although the source still lists it.
+                if (stats.relevant or stats.skipped_known) and not stats.store_errors:
                     self.conn.execute(SQL_DEACTIVATE_UNSEEN, (self.source_id, self.run_id))
         self.conn.close()
 
@@ -488,7 +505,19 @@ def run(
                 stats.parsed += 1
                 if outcome.relevant and outcome.posting is not None:
                     stats.relevant.append(outcome.posting)
-            if loader is not None and loader.store(outcome):
+            if loader is None:
+                continue
+            try:
+                inserted = loader.store(outcome)
+            except Exception as exc:
+                # One bad row must not sink the run (its transaction is already rolled
+                # back); anything else, such as a dropped connection, still does.
+                if not loader.is_row_error(exc):
+                    raise
+                log.warning("item %s not stored: %s", raw.external_id, exc)
+                stats.store_errors.append((raw.external_id, f"{type(exc).__name__}: {exc}"))
+                continue
+            if inserted:
                 stats.new_postings += 1
     return stats
 
@@ -505,6 +534,10 @@ def print_report(stats: Stats, *, dry_run: bool) -> None:
         print(f"{k:<{width}}  {v}")
     for ext_id, err in stats.errors[:3]:
         print(f"  parse error {ext_id}: {err[:160]}")
+    if stats.store_errors:
+        print(f"Items not stored: {len(stats.store_errors)}")
+        for ext_id, err in stats.store_errors[:3]:
+            print(f"  store error {ext_id}: {err[:160]}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -560,7 +593,9 @@ def main(argv: list[str] | None = None) -> int:
     print_report(stats, dry_run=args.dry_run)
     if client is not None:
         print(f"HTTP requests made: {client.requests_made}")
-    return 1 if error else 0
+    # Row-level store errors don't fail the crawl_runs row, but they do fail the step, so
+    # the workflow flags them.
+    return 1 if error or stats.store_errors else 0
 
 
 if __name__ == "__main__":
