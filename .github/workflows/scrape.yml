@@ -59,7 +59,7 @@ jobs:
         continue-on-error: true
         run: uv run --project scraper python -m scraper.pipeline --source hn_hiring
 
-      # Official keyless API: the whole 7-day window by cursor (about 12 requests). Its docs
+      # Official keyless API: the whole 7-day window by cursor (about 15 requests). Its docs
       # ask for at most hourly polling and never at minute 00; this runs once a day at :07+.
       - name: Source - jobicy
         id: jobicy

@@ -35,7 +35,7 @@ API_URL = "https://jobicy.com/api/jobs"
 FIXTURE_EXT = "json"
 
 PAGE_SIZE = 100  # the API's maximum
-MAX_PAGES = 20
+MAX_PAGES = 30  # the first crawl (2026-11-16) needed 15
 
 _JOB_TYPES: dict[str, JobType] = {
     "full-time": "full_time",
