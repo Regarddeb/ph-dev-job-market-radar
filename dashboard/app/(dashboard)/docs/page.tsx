@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArchitectureDiagram } from "@/components/architecture-diagram";
+import { DocsToc } from "@/components/docs-toc";
 import { Flow } from "@/components/flow";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -34,7 +35,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} aria-labelledby={`${id}-h`} className="scroll-mt-28 space-y-4">
+    <section
+      id={id}
+      aria-labelledby={`${id}-h`}
+      className="scroll-mt-40 space-y-4 md:scroll-mt-28 lg:scroll-mt-20"
+    >
       <h2 id={`${id}-h`} className="text-xl font-semibold tracking-tight">
         {title}
       </h2>
@@ -189,7 +194,7 @@ const RULES = [
 
 export default function DocsPage() {
   return (
-    <article className="space-y-12">
+    <article className="space-y-8">
       <header className="space-y-3">
         <h1 className="text-2xl font-semibold tracking-tight">How it works</h1>
         <p className="text-muted-foreground max-w-prose text-sm">
@@ -205,267 +210,266 @@ export default function DocsPage() {
           </a>
           .
         </p>
-        <nav aria-label="On this page">
-          <ul className="flex flex-wrap gap-1.5 text-xs">
-            {SECTIONS.map((s) => (
-              <li key={s.id}>
-                <a
-                  href={`#${s.id}`}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted inline-block rounded-md border px-2.5 py-1"
-                >
-                  {s.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
       </header>
 
-      <Section id="purpose" title="Purpose">
-        <Prose>
-          <p>
-            PH Dev Job Market Radar tracks the remote developer job market from the point of view of
-            a developer based in the Philippines. It answers three questions:{" "}
-            <Link href="/skills" className={LINK}>
-              which skills are in demand
-            </Link>
-            ,{" "}
-            <Link href="/salaries" className={LINK}>
-              what roles pay
-            </Link>{" "}
-            in pesos, and{" "}
-            <Link href="/ph-friendly" className={LINK}>
-              which roles accept PH-based applicants
-            </Link>
-            .
-          </p>
-          <p>
-            It is a personal portfolio project that shows three things working together: web
-            scraping, rule-based data processing, and a dashboard. It is informational only. It is
-            not a job board: every posting links back to where it was published, and you apply
-            there.
-          </p>
-        </Prose>
-      </Section>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_11rem] lg:gap-10">
+        <DocsToc items={SECTIONS} />
+        <div className="space-y-12 pt-8 lg:pt-0">
+          <Section id="purpose" title="Purpose">
+            <Prose>
+              <p>
+                PH Dev Job Market Radar tracks the remote developer job market from the point of
+                view of a developer based in the Philippines. It answers three questions:{" "}
+                <Link href="/skills" className={LINK}>
+                  which skills are in demand
+                </Link>
+                ,{" "}
+                <Link href="/salaries" className={LINK}>
+                  what roles pay
+                </Link>{" "}
+                in pesos, and{" "}
+                <Link href="/ph-friendly" className={LINK}>
+                  which roles accept PH-based applicants
+                </Link>
+                .
+              </p>
+              <p>
+                It is a personal portfolio project that shows three things working together: web
+                scraping, rule-based data processing, and a dashboard. It is informational only. It
+                is not a job board: every posting links back to where it was published, and you
+                apply there.
+              </p>
+            </Prose>
+          </Section>
 
-      <Section id="architecture" title="How it runs">
-        <Prose>
-          <p>
-            Once a day a scheduled job fetches the sources, processes the postings and writes them
-            to the database. The website never fetches a job site itself; it only reads what the job
-            stored.
-          </p>
-        </Prose>
-        <ArchitectureDiagram />
-        <h3 className="pt-2 text-sm font-medium">The daily run, step by step</h3>
-        <Flow
-          label="Steps of the daily run, in order"
-          steps={[
-            { tag: "fx", title: "Exchange rates", note: "ECB rates for the last 90 days" },
-            {
-              tag: "pipeline",
-              title: "Each source",
-              note: "its own step; one failing doesn't stop the rest",
-            },
-            { tag: "dedupe", title: "Duplicates", note: "across all sources" },
-            { tag: "aggregate", title: "Daily stats", note: "per skill, last 35 days" },
-            { tag: "retention", title: "Trim", note: "old descriptions and raw payloads" },
-            { tag: "revalidate", title: "Refresh site", note: "cached pages rebuild" },
-          ]}
-        />
-        <Prose>
-          <p>
-            Every step is idempotent: rows are upserts keyed on the source and the posting&apos;s id
-            there, so a run can be late, skipped or repeated without creating duplicates. Each
-            source&apos;s run is recorded, and the{" "}
-            <Link href="/ops" className={LINK}>
-              Status page
-            </Link>{" "}
-            flags any source that has not succeeded in 48 hours.
-          </p>
-        </Prose>
-      </Section>
+          <Section id="architecture" title="How it runs">
+            <Prose>
+              <p>
+                Once a day a scheduled job fetches the sources, processes the postings and writes
+                them to the database. The website never fetches a job site itself; it only reads
+                what the job stored.
+              </p>
+            </Prose>
+            <ArchitectureDiagram />
+            <h3 className="pt-2 text-sm font-medium">The daily run, step by step</h3>
+            <Flow
+              label="Steps of the daily run, in order"
+              steps={[
+                { tag: "fx", title: "Exchange rates", note: "ECB rates for the last 90 days" },
+                {
+                  tag: "pipeline",
+                  title: "Each source",
+                  note: "its own step; one failing doesn't stop the rest",
+                },
+                { tag: "dedupe", title: "Duplicates", note: "across all sources" },
+                { tag: "aggregate", title: "Daily stats", note: "per skill, last 35 days" },
+                { tag: "retention", title: "Trim", note: "old descriptions and raw payloads" },
+                { tag: "revalidate", title: "Refresh site", note: "cached pages rebuild" },
+              ]}
+            />
+            <Prose>
+              <p>
+                Every step is idempotent: rows are upserts keyed on the source and the
+                posting&apos;s id there, so a run can be late, skipped or repeated without creating
+                duplicates. Each source&apos;s run is recorded, and the{" "}
+                <Link href="/ops" className={LINK}>
+                  Status page
+                </Link>{" "}
+                flags any source that has not succeeded in 48 hours.
+              </p>
+            </Prose>
+          </Section>
 
-      <Section id="pipeline" title="What happens to one posting">
-        <Flow
-          label="Stages one posting passes through"
-          steps={[
-            { title: "Fetch", note: "rate-limited, identified client" },
-            { title: "Store raw", note: "before any parsing" },
-            { title: "Parse", note: "only what the source states" },
-            { title: "Filter", note: "developer roles only" },
-            { title: "Derive", note: "salary, seniority, type, PH-eligible" },
-            { title: "Tag skills", note: "regex dictionary" },
-            { title: "Load", note: "upsert; convert salary to PHP" },
-          ]}
-        />
-        <Prose>
-          <p>
-            The raw response is saved first, so a rule can be improved later and re-applied to
-            everything already collected without fetching again. A posting that fails to parse is
-            recorded with its error and does not stop the run.
-          </p>
-          <p>
-            A posting is <strong className="text-foreground">active</strong> while its source still
-            lists it. When a later successful crawl no longer sees it, it stays in the history for
-            trends but leaves the lists.
-          </p>
-        </Prose>
-      </Section>
+          <Section id="pipeline" title="What happens to one posting">
+            <Flow
+              label="Stages one posting passes through"
+              steps={[
+                { title: "Fetch", note: "rate-limited, identified client" },
+                { title: "Store raw", note: "before any parsing" },
+                { title: "Parse", note: "only what the source states" },
+                { title: "Filter", note: "developer roles only" },
+                { title: "Derive", note: "salary, seniority, type, PH-eligible" },
+                { title: "Tag skills", note: "regex dictionary" },
+                { title: "Load", note: "upsert; convert salary to PHP" },
+              ]}
+            />
+            <Prose>
+              <p>
+                The raw response is saved first, so a rule can be improved later and re-applied to
+                everything already collected without fetching again. A posting that fails to parse
+                is recorded with its error and does not stop the run.
+              </p>
+              <p>
+                A posting is <strong className="text-foreground">active</strong> while its source
+                still lists it. When a later successful crawl no longer sees it, it stays in the
+                history for trends but leaves the lists.
+              </p>
+            </Prose>
+          </Section>
 
-      <Section id="rules" title="Processing rules">
-        <Prose>
-          <p>
-            Every derived field comes from fixed rules: regular expressions, keyword dictionaries
-            and fuzzy string matching. No AI model is involved anywhere, so the same posting always
-            produces the same result and each rule has tests.
-          </p>
-        </Prose>
-        <dl className="ring-foreground/10 divide-y rounded-xl ring-1">
-          {RULES.map((r) => (
-            <div key={r.field} className="grid gap-1 px-4 py-3 sm:grid-cols-[9rem_1fr] sm:gap-4">
-              <dt className="text-sm font-medium">{r.field}</dt>
-              <dd className="text-muted-foreground text-sm">{r.rule}</dd>
+          <Section id="rules" title="Processing rules">
+            <Prose>
+              <p>
+                Every derived field comes from fixed rules: regular expressions, keyword
+                dictionaries and fuzzy string matching. No AI model is involved anywhere, so the
+                same posting always produces the same result and each rule has tests.
+              </p>
+            </Prose>
+            <dl className="ring-foreground/10 divide-y rounded-xl ring-1">
+              {RULES.map((r) => (
+                <div
+                  key={r.field}
+                  className="grid gap-1 px-4 py-3 sm:grid-cols-[9rem_1fr] sm:gap-4"
+                >
+                  <dt className="text-sm font-medium">{r.field}</dt>
+                  <dd className="text-muted-foreground text-sm">{r.rule}</dd>
+                </div>
+              ))}
+            </dl>
+          </Section>
+
+          <Section id="stack" title="Tech stack">
+            <div className="grid gap-4 lg:grid-cols-3">
+              {STACK.map((group) => (
+                <Card key={group.area}>
+                  <CardHeader>
+                    <CardTitle>{group.area}</CardTitle>
+                    <CardDescription className="font-mono text-xs">{group.where}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2.5">
+                      {group.items.map(([name, why]) => (
+                        <li key={name} className="text-sm">
+                          <span className="font-medium">{name}</span>
+                          <span className="text-muted-foreground block text-xs">{why}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          ))}
-        </dl>
-      </Section>
+          </Section>
 
-      <Section id="stack" title="Tech stack">
-        <div className="grid gap-4 lg:grid-cols-3">
-          {STACK.map((group) => (
-            <Card key={group.area}>
-              <CardHeader>
-                <CardTitle>{group.area}</CardTitle>
-                <CardDescription className="font-mono text-xs">{group.where}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2.5">
-                  {group.items.map(([name, why]) => (
-                    <li key={name} className="text-sm">
-                      <span className="font-medium">{name}</span>
-                      <span className="text-muted-foreground block text-xs">{why}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </Section>
+          <Section id="data" title="Data model">
+            <Prose>
+              <p>
+                The schema is defined once, in Prisma, and changed only through migrations. The
+                scraper writes rows but can never alter tables.
+              </p>
+            </Prose>
+            <Flow
+              label="How the main tables relate"
+              steps={[
+                { tag: "sources", title: "Source", note: "has many runs and postings" },
+                { tag: "raw_postings", title: "Raw response", note: "one per posting, as fetched" },
+                { tag: "postings", title: "Posting", note: "parsed and classified" },
+                { tag: "posting_skills", title: "Skills", note: "many per posting" },
+                { tag: "daily_skill_stats", title: "Daily stats", note: "what the charts read" },
+              ]}
+            />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {TABLES.map((t) => (
+                <div
+                  key={t.name}
+                  className="bg-card ring-foreground/10 space-y-2 rounded-xl p-4 ring-1"
+                >
+                  <h3 className="font-mono text-sm font-medium">{t.name}</h3>
+                  <p className="text-muted-foreground text-xs">{t.role}</p>
+                  <ul className="flex flex-wrap gap-1" aria-label={`Main columns of ${t.name}`}>
+                    {t.columns.map((c) => (
+                      <li
+                        key={c}
+                        className="bg-muted rounded px-1.5 py-0.5 font-mono text-[0.7rem]"
+                      >
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <Prose>
+              <p>
+                A duplicate keeps its row and points at the original through{" "}
+                <Code>canonical_posting_id</Code>; lists and charts count only rows where that is
+                empty. Unknown values are stored as <Code>NULL</Code> or <Code>unspecified</Code>,
+                never filled in.
+              </p>
+            </Prose>
+          </Section>
 
-      <Section id="data" title="Data model">
-        <Prose>
-          <p>
-            The schema is defined once, in Prisma, and changed only through migrations. The scraper
-            writes rows but can never alter tables.
-          </p>
-        </Prose>
-        <Flow
-          label="How the main tables relate"
-          steps={[
-            { tag: "sources", title: "Source", note: "has many runs and postings" },
-            { tag: "raw_postings", title: "Raw response", note: "one per posting, as fetched" },
-            { tag: "postings", title: "Posting", note: "parsed and classified" },
-            { tag: "posting_skills", title: "Skills", note: "many per posting" },
-            { tag: "daily_skill_stats", title: "Daily stats", note: "what the charts read" },
-          ]}
-        />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {TABLES.map((t) => (
-            <div
-              key={t.name}
-              className="bg-card ring-foreground/10 space-y-2 rounded-xl p-4 ring-1"
-            >
-              <h3 className="font-mono text-sm font-medium">{t.name}</h3>
-              <p className="text-muted-foreground text-xs">{t.role}</p>
-              <ul className="flex flex-wrap gap-1" aria-label={`Main columns of ${t.name}`}>
-                {t.columns.map((c) => (
-                  <li key={c} className="bg-muted rounded px-1.5 py-0.5 font-mono text-[0.7rem]">
-                    {c}
-                  </li>
-                ))}
+          <Section id="highlights" title="Highlights">
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {[
+                [
+                  "Only permitted sources",
+                  "Each source's terms, robots.txt and API rules are checked and recorded before any code is written. Sites that forbid scraping are never touched, and nothing sits behind a login.",
+                ],
+                [
+                  "Never guess",
+                  "If a posting doesn't state a salary period, seniority or where it hires, the field stays empty. A smaller honest sample beats a larger invented one.",
+                ],
+                [
+                  "Attribution on every posting",
+                  "Each row carries a followed “via Source” link to the original, as the sources' terms ask.",
+                ],
+                [
+                  "Raw first, reparse later",
+                  "Because responses are stored before parsing, improving a rule updates past data without another request to the source.",
+                ],
+                [
+                  "Tests use saved fixtures",
+                  "Parsers are tested against real captured responses kept in the repository. Tests never call a live site.",
+                ],
+                [
+                  "Least privilege",
+                  "Three database roles: migrations, a writer that cannot change tables, and a read-only role for this website.",
+                ],
+                [
+                  "Fast, cheap pages",
+                  "Pages are prerendered and cached by tag, then refreshed once after each daily run instead of querying on every visit.",
+                ],
+                [
+                  "Five years in 1 GB",
+                  "Descriptions and raw payloads are trimmed after 90 days; the compact facts and daily stats are kept for trends.",
+                ],
+              ].map(([title, body]) => (
+                <li key={title} className="ring-foreground/10 rounded-xl p-4 ring-1">
+                  <h3 className="text-sm font-medium">{title}</h3>
+                  <p className="text-muted-foreground mt-1 text-sm">{body}</p>
+                </li>
+              ))}
+            </ul>
+          </Section>
+
+          <Section id="limits" title="What the numbers can and can't tell you">
+            <Prose>
+              <ul className="list-disc space-y-2 pl-5">
+                <li>
+                  The sample is three remote-focused sources, not the whole market. It leans towards
+                  companies that post on them, many of them US and European startups.
+                </li>
+                <li>
+                  Most postings state no salary, and many that do give no period, so salary charts
+                  rest on a minority of postings. Each chart shows its sample size.
+                </li>
+                <li>
+                  “PH-friendly” means the posting says so. Many roles that would accept a PH-based
+                  applicant never state it and are not counted.
+                </li>
+                <li>
+                  PHP amounts use ECB euro reference rates (other currencies derived as cross rates)
+                  for the day a posting was first seen. They are for comparison, not a quote.
+                </li>
+                <li>
+                  Data is refreshed once a day, so a posting may close before it leaves the list.
+                </li>
               </ul>
-            </div>
-          ))}
+            </Prose>
+          </Section>
         </div>
-        <Prose>
-          <p>
-            A duplicate keeps its row and points at the original through{" "}
-            <Code>canonical_posting_id</Code>; lists and charts count only rows where that is empty.
-            Unknown values are stored as <Code>NULL</Code> or <Code>unspecified</Code>, never filled
-            in.
-          </p>
-        </Prose>
-      </Section>
-
-      <Section id="highlights" title="Highlights">
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {[
-            [
-              "Only permitted sources",
-              "Each source's terms, robots.txt and API rules are checked and recorded before any code is written. Sites that forbid scraping are never touched, and nothing sits behind a login.",
-            ],
-            [
-              "Never guess",
-              "If a posting doesn't state a salary period, seniority or where it hires, the field stays empty. A smaller honest sample beats a larger invented one.",
-            ],
-            [
-              "Attribution on every posting",
-              "Each row carries a followed “via Source” link to the original, as the sources' terms ask.",
-            ],
-            [
-              "Raw first, reparse later",
-              "Because responses are stored before parsing, improving a rule updates past data without another request to the source.",
-            ],
-            [
-              "Tests use saved fixtures",
-              "Parsers are tested against real captured responses kept in the repository. Tests never call a live site.",
-            ],
-            [
-              "Least privilege",
-              "Three database roles: migrations, a writer that cannot change tables, and a read-only role for this website.",
-            ],
-            [
-              "Fast, cheap pages",
-              "Pages are prerendered and cached by tag, then refreshed once after each daily run instead of querying on every visit.",
-            ],
-            [
-              "Five years in 1 GB",
-              "Descriptions and raw payloads are trimmed after 90 days; the compact facts and daily stats are kept for trends.",
-            ],
-          ].map(([title, body]) => (
-            <li key={title} className="ring-foreground/10 rounded-xl p-4 ring-1">
-              <h3 className="text-sm font-medium">{title}</h3>
-              <p className="text-muted-foreground mt-1 text-sm">{body}</p>
-            </li>
-          ))}
-        </ul>
-      </Section>
-
-      <Section id="limits" title="What the numbers can and can't tell you">
-        <Prose>
-          <ul className="list-disc space-y-2 pl-5">
-            <li>
-              The sample is three remote-focused sources, not the whole market. It leans towards
-              companies that post on them, many of them US and European startups.
-            </li>
-            <li>
-              Most postings state no salary, and many that do give no period, so salary charts rest
-              on a minority of postings. Each chart shows its sample size.
-            </li>
-            <li>
-              “PH-friendly” means the posting says so. Many roles that would accept a PH-based
-              applicant never state it and are not counted.
-            </li>
-            <li>
-              PHP amounts use ECB euro reference rates (other currencies derived as cross rates) for
-              the day a posting was first seen. They are for comparison, not a quote.
-            </li>
-            <li>Data is refreshed once a day, so a posting may close before it leaves the list.</li>
-          </ul>
-        </Prose>
-      </Section>
+      </div>
     </article>
   );
 }
