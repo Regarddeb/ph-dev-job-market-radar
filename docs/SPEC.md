@@ -166,7 +166,7 @@ Neon free tier = 1 GB per project. Keep 5 years of history and trim bulky text s
 | Skills | `/skills` | Top skills this month vs last (bar, % change); weekly trend line for selected skills |
 | Salaries | `/salaries` | Median and range per skill, always with sample size (n) |
 | PH-friendly roles | `/ph-friendly` | Active postings that accept PH-based applicants (`ph_eligible = true`), newest first. Visitors filter by job type (default: part-time, freelance, contract, not stated; full-time off) and by skills (any of), in the browser. Replaced "Matches for me" on 2026-11-08: the whole site is a public, informational dashboard, so no page is built around one person's skill set |
-| How it works | `/docs` | Public documentation: purpose, architecture diagram and flowcharts of the daily run and of one posting's path, processing rules, tech stack, data model, highlights and limits. Static (no data queries). Keep it in step with this spec when the pipeline, sources or schema change |
+| How it works | `/docs` | Public documentation: purpose, architecture diagram and flowcharts of the daily run and of one posting's path, processing rules, tech stack, data model, highlights and limits. Static (no data queries). An "On this page" list marks the section being read (`components/docs-toc.tsx`): a sticky right-hand column on large screens, a sticky sideways-scrolling bar under the header on small ones. Keep it in step with this spec when the pipeline, sources or schema change |
 | Ops | `/ops` | `crawl_runs` status/errors per source; last successful run per source (flag > 48 h); DB size (warn > 800 MB) |
 
 - As built (step 7):
